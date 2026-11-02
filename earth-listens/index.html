@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Earth Listening Room · lab</title>
+<style>
+  :root { --panel: 300px; --ink: #e9e9ea; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0a0a0b; color: var(--ink);
+    font: 13px/1.4 -apple-system, "Helvetica Neue", Arial, sans-serif; overflow: hidden; }
+  #room { position: absolute; inset: 0 var(--panel) 0 0; cursor: grab; }
+  #room.dragging { cursor: grabbing; }
+  body.bare #room { right: 0; }
+  body.bare #panel { display: none; }
+  #room canvas { display: block; width: 100%; height: 100%; }
+  #panel { position: absolute; top: 0; right: 0; bottom: 0; width: var(--panel); background: #111113;
+    border-left: 1px solid #222; padding: 18px 18px 24px; overflow-y: auto; }
+  h1 { font-size: 13px; font-weight: 600; margin: 0 0 2px; letter-spacing: .02em; }
+  .sub { color: #888; margin-bottom: 18px; }
+  .group { margin: 0 0 18px; }
+  .label { color: #8a8a8f; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { background: #1d1d20; color: var(--ink); border: 1px solid #2c2c31; border-radius: 6px; padding: 6px 10px;
+    font: inherit; cursor: pointer; }
+  button:hover { border-color: #46464d; }
+  button.on { background: #e9e9ea; color: #111; border-color: #e9e9ea; }
+  input[type=range] { width: 100%; accent-color: #b98a5e; }
+  .keys { color: #999; font-size: 11px; line-height: 1.7; }
+  .note { color: #777; font-size: 11px; line-height: 1.6; }
+  /* tabs between the MAC Niterói works */
+  #tabs { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; gap: 4px; padding: 4px;
+    background: rgba(10,10,11,.72); border: 1px solid #26262a; border-radius: 9px; backdrop-filter: blur(6px); }
+  #tabs a { color: #aaa; text-decoration: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; }
+  #tabs a:hover { color: #fff; }
+  #tabs a.on { background: #e9e9ea; color: #111; }
+  body.embed #tabs { display: none; }             /* ?embed: inside the presentation page */
+  /* the sound button, well in view over the room until the visitor starts the sound, then small */
+  #soundbtn { position: absolute; z-index: 8; left: calc((100% - var(--panel)) / 2); bottom: 26px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 12px; padding: 12px 22px 12px 14px; border-radius: 99px; border: 0;
+    background: #e9e9ea; color: #111; font: inherit; cursor: pointer; box-shadow: 0 8px 30px rgba(0,0,0,.45); transition: all .35s ease; }
+  body.bare #soundbtn { left: 50%; }
+  #soundbtn::before { content: ""; position: absolute; inset: -6px; border-radius: 99px; border: 1px solid rgba(233,233,234,.55); animation: ring 2.4s ease-out infinite; pointer-events: none; }
+  @keyframes ring { 0% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.18); } }
+  #soundbtn .ico { width: 34px; height: 34px; border-radius: 99px; background: #111; position: relative; flex: none; }
+  #soundbtn .ico::after { content: ""; position: absolute; left: 13px; top: 10px; border-left: 11px solid #e9e9ea; border-top: 7px solid transparent; border-bottom: 7px solid transparent; }
+  #soundbtn .txt { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
+  #soundbtn b { font-size: 15px; font-weight: 600; }
+  #soundbtn small { font-size: 11px; color: #555; }
+  #soundbtn.loading::before { animation-duration: 1s; }
+  #soundbtn.playing { padding: 7px 14px 7px 8px; gap: 8px; background: rgba(17,17,19,.78); color: #ddd; box-shadow: none; backdrop-filter: blur(6px); }
+  #soundbtn.playing::before { display: none; }
+  #soundbtn.playing .ico { width: 22px; height: 22px; background: #e9e9ea; }
+  #soundbtn.playing .ico::after { left: 7px; top: 7px; width: 8px; height: 8px; border: 0; background: #111; }
+  #soundbtn.playing b { font-size: 12px; font-weight: 500; }
+  #soundbtn.playing small { display: none; }
+  #loading { position: absolute; inset: 0; display: grid; place-items: center; background: #0a0a0b; z-index: 9; color: #888; }
+</style>
+<script type="importmap">{ "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/jsm/" } }</script>
+</head>
+<body>
+<script>if (new URLSearchParams(location.search).has('embed')) document.body.classList.add('embed');</script>
+<nav id="tabs"><a href="../expressions/index.html">Expressions of Basic Humanity</a><a class="on" href="./index.html">Earth Listening Room</a></nav>
+<div id="loading">chargement de la salle…</div>
+<div id="room"></div>
+<button id="soundbtn" aria-label="Écouter la salle"><span class="ico" aria-hidden="true"></span><span class="txt"><b>Écouter la salle</b><small>casque conseillé</small></span></button>
+
+<aside id="panel">
+  <h1>Earth Listening Room</h1>
+  <div class="sub">sound lab · MAC Niterói</div>
+
+  <div class="group">
+    <div class="note">Une motte de terre, un écran planté au sommet. Une coulée de terre descend du coin et a emporté écrans et enceintes. On s'installe sur les coussins, on écoute.</div>
+  </div>
+
+  <div class="group">
+    <div class="label">Se déplacer dans l'œuvre</div>
+    <div class="keys">glisser : regarder autour · molette : avancer / reculer<br>Z Q S D ou flèches : marcher · E : monter · C : s'accroupir</div>
+  </div>
+
+  <div class="group">
+    <div class="label">Vues</div>
+    <div class="row" id="views"></div>
+  </div>
+
+  <div class="group">
+    <div class="label">Son</div>
+    <div class="row"><button id="listen">écouter dans la salle</button></div>
+    <div class="note" style="margin-top:6px">Casque conseillé. Chaque voix sort de ses enceintes enterrées : approche-toi de l'une ou de l'autre. Caisson sous la motte : la Terre (la vibration réelle du sol de l'État de Rio) · dans la coulée : la baie sous l'eau, la forêt atlantique, la nuit · de temps en temps, la voix d'Azerti, qui passe d'une enceinte à l'autre, parfois dans les quatre à la fois. Les écrans réagissent alors au vrai son.</div>
+  </div>
+
+  <div class="group">
+    <div class="label">Écrans</div>
+    <div class="row"><button data-screens="voices" class="on">un son par écran</button><button data-screens="points">onde</button><button data-screens="off">noirs</button></div>
+    <div class="note" style="margin-top:6px">« Un son par écran » : chaque écran montre, en points, le son qui sort de la terre près de lui. Motte : la Terre entière · coulée : la baie, le vent dans la forêt, les insectes de la nuit. Proposition, aucun son n'est écouté ici.</div>
+  </div>
+
+  <div class="group">
+    <div class="label">corps du jour au plafond</div>
+    <div class="row"><button data-ceil="off">aucune</button><button data-ceil="mix" class="on">mix des cinq, toujours changeant</button></div>
+    <div class="row" style="margin-top:6px"><button data-ceil="onde">Là où l'onde décide</button><button data-ceil="onde2">Une onde pour deux</button><button data-ceil="chemins">Tous les chemins à la fois</button><button data-ceil="toucher">Sans y toucher</button><button data-ceil="personne">Personne n'a choisi</button></div>
+    <div class="note" style="margin-top:6px">« Mix » : chaque pièce existe en trois formes (trois graines). Le mix en tire une au hasard, la joue depuis un moment au hasard, tournée ou retournée, puis la fait fondre dans la suivante : les formes des deux pièces se mêlent, les plus lumineuses de la nouvelle apparaissent d'abord. Jamais deux fois la même suite, jamais de début ni de fin.</div>
+    <div class="label" style="margin-top:10px">type de projecteur</div>
+    <div class="row"><button data-ceilsize="one">1 projecteur, rectangle</button><button data-ceilsize="feather" class="on">1 projecteur, bords fondus (cache ovale)</button><button data-ceilsize="full">tout le plafond (3 à 4 projecteurs)</button></div>
+    <div class="note" style="margin-top:6px">« rectangle » montre aussi le gris du noir du projecteur, visible dans une salle sombre. « bords fondus » : l'image s'éteint vers les bords et un cache ovale posé devant l'objectif coupe ce gris ; l'image flotte.</div>
+    <div class="note" style="margin-top:6px">Un rectangle de lumière au-dessus des coussins, en points, comme les écrans. Le projecteur serait caché (courte focale, posé hors de la vue).</div>
+  </div>
+
+  <div class="group">
+    <div class="label">Lumière</div>
+    <input id="light" type="range" min="0.2" max="1.6" step="0.01" value="1">
+  </div>
+
+  <div class="group">
+    <div class="row"><button id="bare">plein écran</button></div>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+// ---------- renderer, scene ----------
+const roomEl = document.getElementById('room');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+roomEl.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0b0c);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.05, 80);
+
+// ---------- deterministic noise ----------
+function hash(x, z) { const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return s - Math.floor(s); }
+function vnoise(x, z) {
+  const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
+  const a = hash(xi, zi), b = hash(xi + 1, zi), c = hash(xi, zi + 1), d = hash(xi + 1, zi + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, z) { return vnoise(x, z) * .55 + vnoise(x * 2.1, z * 2.1) * .3 + vnoise(x * 4.3, z * 4.3) * .15; }
+
+// soft image-based light so materials read as real matter (kept low: the gallery stays quiet)
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.32;
+
+// ---------- procedural, tileable textures ----------
+function pnoise(x, z, p) {                                   // value noise that repeats every p cells
+  const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf), m = (a) => ((a % p) + p) % p;
+  const a = hash(m(xi), m(zi)), b = hash(m(xi + 1), m(zi)), c = hash(m(xi), m(zi + 1)), d = hash(m(xi + 1), m(zi + 1));
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function pfbm(x, z, p, oct) { let s = 0, a = .5, f = 1, n = 0; for (let i = 0; i < oct; i++) { s += pnoise(x * f, z * f, p * f) * a; n += a; a *= .5; f *= 2; } return s / n; }
+function makeTex(size, fn, srgb, repeat) {                    // fn(u, v) -> [r, g, b] in 0..1
+  const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d'); const im = x.createImageData(size, size);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) { const [r, g, b] = fn(i / size, j / size); const k = (j * size + i) * 4;
+    im.data[k] = r * 255; im.data[k + 1] = g * 255; im.data[k + 2] = b * 255; im.data[k + 3] = 255; }
+  x.putImageData(im, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat); t.anisotropy = 8;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function normalFromHeight(size, hf, strength, repeat) {
+  const hs = new Float32Array(size * size); for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) hs[j * size + i] = hf(i / size, j / size);
+  const at = (i, j) => hs[((j + size) % size) * size + ((i + size) % size)];
+  return makeTex(size, (u, v) => { const i = Math.round(u * size), j = Math.round(v * size);
+    const dx = (at(i + 1, j) - at(i - 1, j)) * strength, dy = (at(i, j + 1) - at(i, j - 1)) * strength; const l = Math.hypot(dx, dy, 1);
+    return [(-dx / l) * .5 + .5, (dy / l) * .5 + .5, (1 / l) * .5 + .5]; }, false, repeat);
+}
+// earth: fine crumbs, small clods, a few lighter grains
+const earthHeight = (u, v) => pfbm(u * 24, v * 24, 24, 5) * .6 + Math.pow(pfbm(u * 70, v * 70, 70, 3), 3) * .9 + (hash(Math.floor(u * 512), Math.floor(v * 512)) > .97 ? .25 : 0);
+const earthColor = makeTex(512, (u, v) => { const n = pfbm(u * 9, v * 9, 9, 4), c = pfbm(u * 70, v * 70, 70, 3), g = hash(Math.floor(u * 512), Math.floor(v * 512));
+  const k = .78 + (n - .5) * .5 - Math.pow(1 - c, 3) * .25 + (g > .985 ? .35 : 0);
+  return [.36 * k, .26 * k, .19 * k]; }, true, 1);
+const earthNormal = normalFromHeight(512, earthHeight, 7, 1);
+// polished concrete floor: mottled, a little reflective
+const floorColor = makeTex(512, (u, v) => { const n = pfbm(u * 6, v * 6, 6, 5), f = pfbm(u * 40, v * 40, 40, 2); const k = .30 + (n - .5) * .09 + (f - .5) * .03; return [k, k, k * 1.02]; }, true, 8);
+const floorRough = makeTex(256, (u, v) => { const n = pfbm(u * 5, v * 5, 5, 4); const k = .32 + (n - .5) * .35; return [k, k, k]; }, false, 8);
+// linen for the cushions
+const weave = (u, v) => { const a = Math.sin(u * Math.PI * 2 * 90), b = Math.sin(v * Math.PI * 2 * 90); return (a > 0 ? a : 0) * .5 + (b > 0 ? b : 0) * .5 + pfbm(u * 30, v * 30, 30, 2) * .4; };
+const linenNormal = normalFromHeight(512, weave, 2.2, 2);
+const linenColor = makeTex(256, (u, v) => { const n = pfbm(u * 12, v * 12, 12, 3); const k = .92 + (n - .5) * .16; return [.52 * k, .49 * k, .45 * k]; }, true, 2);
+// gallery plaster
+const plasterNormal = normalFromHeight(256, (u, v) => pfbm(u * 20, v * 20, 20, 4), 1.2, 6);
+
+// ---------- the room: curved inner gallery of the MAC ----------
+// metres, y up. The back wall is a long concave curve, like the inner gallery of the museum.
+const H = 3.6, R = 10, CZ = 5.2, TH = 0.66;            // wall height, curve radius, curve centre z, half angle
+const XW = R * Math.sin(TH);                          // half width of the room at the ends of the curve
+const ZEND = CZ - R * Math.cos(TH);                   // z where the curve meets the side walls
+const ZFRONT = 6.5;
+const wallMat = new THREE.MeshStandardMaterial({ color: 0xf1f0ee, roughness: .95, normalMap: plasterNormal, normalScale: new THREE.Vector2(.4, .4) });
+const curve = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 96, 1, true, Math.PI - TH, TH * 2), wallMat);
+curve.material = wallMat.clone(); curve.material.side = THREE.BackSide; curve.position.set(0, H / 2, CZ); curve.receiveShadow = true; scene.add(curve);
+for (const s of [-1, 1]) {
+  const w = new THREE.Mesh(new THREE.PlaneGeometry(ZFRONT - ZEND, H), wallMat);
+  w.rotation.y = -s * Math.PI / 2; w.position.set(s * XW, H / 2, (ZFRONT + ZEND) / 2); w.receiveShadow = true; scene.add(w);
+}
+const front = new THREE.Mesh(new THREE.PlaneGeometry(XW * 2, H), wallMat);
+front.rotation.y = Math.PI; front.position.set(0, H / 2, ZFRONT); scene.add(front);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ map: floorColor, roughnessMap: floorRough, roughness: 1, metalness: 0 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0xe9e8e5, roughness: 1 }));
+ceil.rotation.x = Math.PI / 2; ceil.position.y = H; scene.add(ceil);
+
+// ---------- the earth: one surface, the mound and the flow from the back right corner ----------
+const M = new THREE.Vector2(-0.6, 0.3);                       // mound centre
+const A = new THREE.Vector2(XW - 1.1, ZEND + 0.2), B = new THREE.Vector2(1.0, -0.4);   // flow: corner -> foot of the mound
+function moundH(x, z) { const d = Math.hypot(x - M.x, z - M.y); const c = Math.max(0, 1 - d / 2.2); return 1.35 * Math.pow(c, 1.15) * (1 - .12 * c * c); }
+function flowH(x, z) {
+  const ab = B.clone().sub(A), L = ab.length(); ab.divideScalar(L);
+  const px = x - A.x, pz = z - A.y; const t = (px * ab.x + pz * ab.y) / L; const w = Math.abs(-px * ab.y + pz * ab.x);
+  if (t < -0.15 || t > 1.1) return 0;
+  const tt = Math.min(1, Math.max(0, t));
+  const half = 1.9 - 0.8 * tt + 0.35 * Math.sin(tt * 5.3);
+  const top = 1.55 * (1 - tt) + 0.42 * tt;
+  const edge = t < 0 ? 1 + t / 0.15 : t > 1 ? 1 - (t - 1) / 0.1 : 1;
+  const across = Math.max(0, 1 - Math.pow(w / half, 2));
+  return top * Math.pow(across, .75) * Math.max(0, edge);
+}
+function earthH(x, z) {
+  const a = moundH(x, z), b = flowH(x, z);
+  const h = Math.max(a, b) + Math.min(a, b) * 0.25;                // soft join where the flow meets the mound
+  return h > 0 ? h + (fbm(x * 2.2, z * 2.2) - .5) * .09 * Math.min(1, h * 4) : 0;
+}
+{
+  const x0 = -3.6, x1 = XW, z0 = ZEND - 0.6, z1 = 3.2, nx = 300, nz = 220;
+  const g = new THREE.PlaneGeometry(x1 - x0, z1 - z0, nx, nz); g.rotateX(-Math.PI / 2); g.translate((x0 + x1) / 2, 0, (z0 + z1) / 2);
+  const p = g.attributes.position, col = [], uv = g.attributes.uv;
+  const c1 = new THREE.Color(0xffffff), c2 = new THREE.Color(0xb59a86), c3 = new THREE.Color(0xfff2e6);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), z = p.getZ(i), h = earthH(x, z);
+    p.setY(i, h - 0.025 + (h > 0 ? (hash(x * 91.7, z * 53.3) - .5) * .018 : 0));
+    const n = fbm(x * 6, z * 6), c = c1.clone().lerp(c2, Math.max(0, .55 - h) * .7 + (n - .5) * .5).lerp(c3, Math.max(0, n - .62) * 1.4);
+    col.push(c.r, c.g, c.b); uv.setXY(i, x / 1.3, z / 1.3);
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+  const earth = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, map: earthColor, normalMap: earthNormal, normalScale: new THREE.Vector2(1.1, 1.1), roughness: 1, envMapIntensity: .4 }));
+  earth.receiveShadow = true; earth.castShadow = true; scene.add(earth);
+  // stones and clods scattered in the earth, more of them along the flow
+  const N = 900, geo = new THREE.IcosahedronGeometry(1, 1);
+  { const q = geo.attributes.position; for (let i = 0; i < q.count; i++) { const k = 1 + (hash(q.getX(i) * 13, q.getY(i) * 7 + q.getZ(i)) - .5) * .5; q.setXYZ(i, q.getX(i) * k, q.getY(i) * k, q.getZ(i) * k); } geo.computeVertexNormals(); }
+  const stones = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ roughness: .9, normalMap: earthNormal, normalScale: new THREE.Vector2(.6, .6) }), N);
+  const mm = new THREE.Matrix4(), q4 = new THREE.Quaternion(), e = new THREE.Euler(), col2 = new THREE.Color(); let n = 0;
+  for (let i = 0; n < N && i < N * 12; i++) {
+    const x = x0 + hash(i, 1.7) * (x1 - x0), z = z0 + hash(i, 9.3) * (z1 - z0), h = earthH(x, z);
+    if (h < .02 || hash(i, 4.4) > (flowH(x, z) > .05 ? .7 : .25)) continue;
+    const r = .008 + Math.pow(hash(i, 2.2), 4) * .05;
+    e.set(hash(i, 3) * 6, hash(i, 5) * 6, hash(i, 7) * 6); q4.setFromEuler(e);
+    mm.compose(new THREE.Vector3(x, h - r * .35, z), q4, new THREE.Vector3(r, r * (.55 + hash(i, 8) * .4), r * (.8 + hash(i, 6) * .4)));
+    stones.setMatrixAt(n, mm);
+    const t = hash(i, 11); col2.setRGB(.30 + t * .18, .25 + t * .14, .20 + t * .1, THREE.SRGBColorSpace); stones.setColorAt(n, col2); n++;
+  }
+  stones.count = n; stones.castShadow = stones.receiveShadow = true; scene.add(stones);
+}
+
+// ---------- screens: ordinary 50" TVs, black, with points ----------
+const screens = [];
+let screenMode = 'voices';
+const VOICE = { 1: 'terre', 2: 'baie', 3: 'vent', 4: 'insectes' };
+function makeScreenCanvas(seed) {
+  const c = document.createElement('canvas'); c.width = 640; c.height = 360;
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  return { c, ctx: c.getContext('2d'), tex, seed };
+}
+function drawScreen(s, t) {
+  const { ctx, c } = s; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, c.width, c.height);
+  if (screenMode === 'off') { s.tex.needsUpdate = true; return; }
+  if (screenMode === 'voices') { drawVoice(s, t); s.tex.needsUpdate = true; return; }
+  const k = s.seed, amp = .5 + .5 * Math.sin(t * .37 + k * 2.1) * Math.sin(t * .11 + k);
+  for (let line = 0; line < 5; line++) {
+    for (let i = 0; i < 150; i++) {
+      const u = i / 149, x = 30 + u * (c.width - 60);
+      const env = Math.sin(u * Math.PI);
+      const y = c.height / 2 + (line - 2) * 18 * (1 - amp * .5)
+        + Math.sin(u * (9 + line * 2) + t * (1.2 + line * .3) + k) * 46 * amp * env
+        + Math.sin(u * 31 + t * 2.7 + line) * 8 * env;
+      const a = (.25 + .75 * env) * (.45 + .55 * hash(i + line * 31, Math.floor(t * 8)));
+      ctx.fillStyle = `rgba(230,234,242,${a.toFixed(3)})`;
+      ctx.fillRect(x, y, 2.2, 2.2);
+    }
+  }
+  s.tex.needsUpdate = true;
+}
+let AK = 1; const LEVEL = {};
+function dot(ctx, x, y, a, r = 2.2) { a *= AK; ctx.fillStyle = `rgba(232,236,244,${Math.max(0, Math.min(1, a)).toFixed(3)})`; ctx.fillRect(x - r / 2, y - r / 2, r, r); }
+function drawVoice(s, t) {
+  const { ctx, c } = s, W = c.width, Hh = c.height, v = VOICE[s.seed];
+  AK = LEVEL[v] == null ? 1 : Math.min(1.6, 0.15 + LEVEL[v] * 5);
+  if (LEVEL[v] != null) t = t + LEVEL[v] * 3;
+  if (v === 'baie') {                       // water: rings rising and fading, a slow swell
+    for (let j = 0; j < 46; j++) for (let i = 0; i < 82; i++) {
+      const x = (i + .5) / 82 * W, y = (j + .5) / 46 * Hh;
+      const r1 = Math.hypot(x - W * .38, y - Hh * .55), r2 = Math.hypot(x - W * .7, y - Hh * .4);
+      const b = Math.sin(r1 * .07 - t * 1.6) * Math.exp(-r1 / 260) + Math.sin(r2 * .06 - t * 1.2 + 2) * Math.exp(-r2 / 220) + .35 * Math.sin(x * .02 + t * .4);
+      if (b > .35) dot(ctx, x + Math.sin(t + j) * 1.5, y, (b - .35) * 1.4);
+    }
+  } else if (v === 'vent') {                // wind in the forest: streams of points bending
+    for (let line = 0; line < 22; line++) for (let i = 0; i < 120; i++) {
+      const u = i / 119, x = u * W, base = (line + .5) / 22 * Hh;
+      const gust = .5 + .5 * Math.sin(t * .5 + line * .3);
+      const y = base + Math.sin(u * 6 + t * 1.3 + line * .7) * 10 * gust + vnoise(u * 4 + t * .6, line) * 14 * gust;
+      if (hash(i, line) < .55) dot(ctx, x, y, (.2 + .6 * gust) * (.5 + .5 * Math.sin(u * Math.PI)), 1.8);
+    }
+  } else if (v === 'insectes') {            // night insects: points that call and answer
+    for (let i = 0; i < 260; i++) {
+      const x = hash(i, 1) * W, y = hash(i, 2) * Hh, ph = hash(i, 3) * 6.28, f = 1.5 + hash(i, 4) * 6;
+      const call = Math.pow(Math.max(0, Math.sin(t * f + ph)), 8) * (.5 + .5 * Math.sin(t * .3 + x * .01));
+      if (call > .02) dot(ctx, x, y, call, 2.4);
+    }
+  } else {                                   // the whole Earth: one slow deep wave gathering every voice
+    const breath = .5 + .5 * Math.sin(t * .25);
+    for (let i = 0; i < 900; i++) {
+      const a = hash(i, 5) * 6.283, rr = Math.pow(hash(i, 6), .5) * (60 + 80 * breath);
+      const x = W / 2 + Math.cos(a + t * .05) * rr * 1.7, y = Hh / 2 + Math.sin(a + t * .05) * rr * .9 + Math.sin(rr * .05 - t) * 6;
+      dot(ctx, x, y, (1 - rr / 240) * (.4 + .6 * hash(i, Math.floor(t * 4))), 2);
+    }
+  }
+}
+let MOUND_TV = null;
+const tvBody = new THREE.MeshStandardMaterial({ color: 0x0c0c0d, roughness: .35, metalness: .4 });
+function tv(seed) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.65, 0.05), tvBody); body.castShadow = true; g.add(body);
+  const s = makeScreenCanvas(seed); screens.push(s);
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.09, 0.62), new THREE.MeshPhysicalMaterial({ color: 0x000000, emissive: 0xffffff, emissiveMap: s.tex, roughness: .25, metalness: 0, clearcoat: .4, clearcoatRoughness: .2 }));
+  scr.position.z = 0.026; g.add(scr);
+  const glow = new THREE.PointLight(0xdfe6f2, 0.25, 1.8, 2); glow.position.set(0, -0.36, 0.12); g.add(glow);
+  scene.add(g); return g;
+}
+// standing on top of the mound, tilted, foot in the earth
+{ const t = tv(1); MOUND_TV = t; t.position.set(M.x + 0.15, moundH(M.x + .15, M.y) + 0.12, M.y + 0.05); t.rotation.set(-0.05, -0.18, 0.5); }
+// carried by the flow: fallen, half swallowed
+function onFlow(t, off) { const ab = B.clone().sub(A); const p = A.clone().add(ab.multiplyScalar(t)); const n = new THREE.Vector2(-(B.y - A.y), B.x - A.x).normalize(); return p.add(n.multiplyScalar(off)); }
+[[0.22, 0.35, 2, [-1.05, 0.5, 0.35], 0.02], [0.48, -0.55, 3, [-1.2, -0.35, -0.3], 0.0], [0.72, 0.45, 4, [-0.95, 0.9, 0.55], -0.02]]
+  .forEach(([t, off, seed, rot, dy]) => { const p = onFlow(t, off); const g = tv(seed); g.position.set(p.x, earthH(p.x, p.y) + dy, p.y); g.rotation.set(...rot); });
+
+// ---------- loudspeakers lying half buried ----------
+function speakerFace(sub) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = sub ? 256 : 440; const x = c.getContext('2d');
+  x.fillStyle = '#141414'; x.fillRect(0, 0, c.width, c.height);
+  const cone = (cx, cy, r) => { const g = x.createRadialGradient(cx, cy, r * .1, cx, cy, r); g.addColorStop(0, '#2b2b2b'); g.addColorStop(.25, '#0b0b0b'); g.addColorStop(.85, '#1c1c1c'); g.addColorStop(1, '#3a3a3a');
+    x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); };
+  if (sub) cone(128, 128, 108); else { cone(128, 300, 100); cone(128, 105, 46); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const SPK = [];
+const wood = new THREE.MeshStandardMaterial({ color: 0x1a1a1b, roughness: .55, metalness: .1 });
+function speaker(sub) {
+  const w = sub ? .5 : .34, h = sub ? .5 : .58, d = sub ? .5 : .3;
+  const face = new THREE.MeshStandardMaterial({ map: speakerFace(sub), roughness: .8 });
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [wood, wood, wood, wood, face, wood]);
+  m.castShadow = true; scene.add(m); SPK.push(m); return m;
+}
+[[0.12, -0.6, [0.9, 0.4, 1.4], 0.08], [0.4, 0.95, [-0.5, -0.6, 1.5], 0.05], [0.63, -0.25, [1.1, 2.6, 0.2], 0.04]]
+  .forEach(([t, off, rot, dy]) => { const p = onFlow(t, off); const s = speaker(false); s.position.set(p.x, earthH(p.x, p.y) + dy, p.y); s.rotation.set(...rot); });
+{ const s = speaker(true); const x = M.x + 1.55, z = M.y + 1.2; s.position.set(x, earthH(x, z) + .08, z); s.rotation.set(-0.25, -0.75, 0.1); }
+
+// ---------- cushions and visitors ----------
+const cushionMat = new THREE.MeshPhysicalMaterial({ map: linenColor, normalMap: linenNormal, normalScale: new THREE.Vector2(.5, .5), roughness: .92, sheen: .6, sheenRoughness: .8, sheenColor: new THREE.Color(0x9a948a) });
+const cushions = [[-3.1, 1.9, .6], [-1.2, 2.9, .1], [1.0, 2.8, -.25], [2.8, 1.6, -.6], [-3.6, 0.0, 1.1]];
+function cushionGeo() {
+  // a pillow: a sphere pushed out to a soft square, thin at the seams, full in the middle
+  const w = 1.0, h = .3, d = .9, g = new THREE.SphereGeometry(1, 64, 32), q = g.attributes.position;
+  for (let i = 0; i < q.count; i++) {
+    const x = q.getX(i), y = q.getY(i), z = q.getZ(i);
+    const nx = Math.sign(x) * Math.pow(Math.abs(x), .32), nz = Math.sign(z) * Math.pow(Math.abs(z), .32);
+    const full = Math.sqrt(Math.max(0, (1 - Math.pow(Math.abs(nx), 6)) * (1 - Math.pow(Math.abs(nz), 6))));
+    q.setXYZ(i, nx * w / 2, y * h / 2 * (0.18 + 0.82 * full), nz * d / 2); g.attributes.uv.setXY(i, nx * .5 + .5, nz * .5 + .5);
+  }
+  g.computeVertexNormals(); return g;
+}
+const cg = cushionGeo();
+cushions.forEach(([x, z, r]) => {
+  const m = new THREE.Mesh(cg, cushionMat);
+  m.position.set(x, 0.135, z); m.rotation.y = r + (hash(x, z) - .5) * .2; m.castShadow = m.receiveShadow = true; scene.add(m);
+});
+
+// ---------- light: quiet white gallery, cold white from the ceiling ----------
+const hemi = new THREE.HemisphereLight(0xe8edf5, 0x4a4a52, 0.55); scene.add(hemi);
+
+const spots = [];
+function spot(x, z, tx, tz, intensity, angle, shadow) {
+  const s = new THREE.SpotLight(0xeef2f8, intensity, 0, angle, 1.0, 1.3);
+  s.position.set(x, H - 0.05, z); s.target.position.set(tx, 0, tz); scene.add(s, s.target);
+  if (shadow) { s.castShadow = true; s.shadow.mapSize.set(4096, 4096); s.shadow.bias = -0.0002; s.shadow.normalBias = 0.02; s.shadow.radius = 3; }
+  spots.push([s, intensity]);
+}
+spot(M.x + 0.6, M.y + 2.2, M.x, M.y, 16, 0.6, true);                  // the mound
+spot(3.6, -0.6, 4.2, -2.0, 15, 0.7, true);                           // the flow
+for (let i = -3; i <= 3; i++) {                                       // wall wash along the curve
+  const a = Math.PI + i * (TH / 3.4), wx = R * Math.sin(a) * .86, wz = CZ + R * Math.cos(a) * .86;
+  const tx = R * Math.sin(a), tz = CZ + R * Math.cos(a);
+  spot(wx, wz, tx, tz, 4, 0.95, false);
+}
+let lightK = 1;
+function applyLight() {           // a projection on the ceiling needs the room dimmer: the fill light drops, the spots on the earth stay
+  const k = lightK, dim = (typeof ceilMode !== 'undefined' && ceilMode !== 'off') ? .3 : 1;
+  spots.forEach(([s, i], n) => s.intensity = i * k * (n < 2 ? 1 : dim)); hemi.intensity = .55 * k * dim; scene.environmentIntensity = .32 * k * dim;
+}
+document.getElementById('light').oninput = (e) => { lightK = +e.target.value; applyLight(); };
+
+// ---------- projection on the ceiling ----------
+let ceilMode = 'mix';
+const CW = 5.6, CD = 4.2, cc = document.createElement('canvas'); cc.width = 1024; cc.height = 768;
+const cctx = cc.getContext('2d'), ctex = new THREE.CanvasTexture(cc); ctex.colorSpace = THREE.SRGBColorSpace;
+const ceilProj = new THREE.Mesh(new THREE.PlaneGeometry(CW, CD), new THREE.MeshBasicMaterial({ map: ctex, toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+ceilProj.rotation.x = Math.PI / 2; ceilProj.position.set(-0.4, H - 0.01, 1.4); scene.add(ceilProj);
+const STARS = Array.from({ length: 1400 }, (_, i) => [hash(i, 21), hash(i, 22), Math.pow(hash(i, 23), 3), hash(i, 24) * 6.28]);
+// five pieces of Le corps du jour, recorded from amelielolie.com: one looping, or all five in a mix that never repeats
+const CEIL_VIDEOS = {};
+function videoTex(url) {
+  const v = document.createElement('video'); v.src = url; v.loop = true; v.muted = true; v.playsInline = true; v.crossOrigin = 'anonymous';
+  const t = new THREE.VideoTexture(v); t.colorSpace = THREE.SRGBColorSpace; return { v, t };
+}
+
+// ---------- the mix: five pieces x three seeds, random order, random moment, morphing into each other ----------
+const MIX_PIECES = ['onde', 'onde2', 'chemins', 'toucher', 'personne'];
+const mixRT = new THREE.WebGLRenderTarget(1024, 768); mixRT.texture.colorSpace = THREE.SRGBColorSpace;
+const mixCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), mixScene = new THREE.Scene();
+const mixSlots = [0, 1].map(() => { const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.crossOrigin = 'anonymous'; v.preload = 'auto';
+  const tx = new THREE.VideoTexture(v); return { v, tx, piece: null, rot: 0, flip: 1, z0: 1, z1: 1 }; });
+const mixMat = new THREE.ShaderMaterial({
+  uniforms: { tA: { value: mixSlots[0].tx }, tB: { value: mixSlots[1].tx }, p: { value: 0 }, time: { value: 0 },
+    trA: { value: new THREE.Vector4(0, 1, 1, 0) }, trB: { value: new THREE.Vector4(0, 1, 1, 0) } },   // rotation, flip, zoom, unused
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }',
+  fragmentShader: `
+    precision highp float; varying vec2 vUv; uniform sampler2D tA, tB; uniform float p, time; uniform vec4 trA, trB;
+    float h(vec2 q){ return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
+    float n2(vec2 q){ vec2 i = floor(q), f = fract(q); f = f*f*(3.-2.*f);
+      return mix(mix(h(i), h(i+vec2(1,0)), f.x), mix(h(i+vec2(0,1)), h(i+vec2(1,1)), f.x), f.y); }
+    float fbm(vec2 q){ return .55*n2(q) + .3*n2(q*2.1+7.) + .15*n2(q*4.3+3.); }
+    // plane uv (4:3) -> the square clip, turned, mirrored, slowly zooming; black outside the square
+    vec3 tap(sampler2D t, vec2 uv, vec4 tr, vec2 warp){
+      vec2 q = vec2((uv.x-.5)*4./3., uv.y-.5) + warp;
+      float c = cos(tr.x), s = sin(tr.x); q = mat2(c, s, -s, c) * q; q.x *= tr.y; q /= tr.z;
+      vec2 e = smoothstep(.5, .46, abs(q)); return pow(texture2D(t, q+.5).rgb, vec3(2.2)) * e.x * e.y; }   // raw video is sRGB: to linear, the sRGB target re-encodes
+    void main(){
+      float m0 = p*p*(3.-2.*p), amp = sin(3.14159*p);
+      // the forms bend toward each other while they exchange: a slow flow field pulls both images
+      vec2 g = vec2(fbm(vUv*2.3 + time*.03), fbm(vUv*2.3 + 11. - time*.025)) - .5;
+      vec3 a = tap(tA, vUv, trA, g * .09 * amp), b = tap(tB, vUv, trB, -g * .09 * amp);
+      float lb = dot(b, vec3(.3, .55, .15)), la = dot(a, vec3(.3, .55, .15));
+      // the new piece rises through its brightest forms first, the old one sinks through its darkest
+      float f = .5*fbm(vUv*3. + time*.02) + .5*(1. - clamp(lb*1.6, 0., 1.));
+      float m = smoothstep(f - .22, f + .22, m0*1.44 - .22);
+      vec3 col = mix(a, b, m);
+      col += (a + b) * .18 * m * (1. - m) * amp;                     // a faint glow where they meet
+      gl_FragColor = vec4(col, 1.);
+    }`,
+  depthTest: false, depthWrite: false });
+mixScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mixMat));
+const MIX = { started: false, phase: 'hold', t0: 0, hold: 0, morph: 9, cur: 0, pending: false };
+window.__mix = { MIX, mixSlots, mixMat };   // for inspection from the console
+const rr = (a, b) => a + Math.random() * (b - a);
+function mixLoad(slot, avoid) {          // a new piece (never the one on screen), one of its three forms, from a random moment
+  const pick = MIX_PIECES.filter(x => x !== avoid), piece = pick[Math.floor(Math.random() * pick.length)];
+  const S = mixSlots[slot]; S.piece = piece; S.rot = Math.floor(Math.random() * 4) * Math.PI / 2; S.flip = Math.random() < .5 ? -1 : 1;
+  S.z0 = rr(1.0, 1.12); S.z1 = rr(1.0, 1.18);
+  MIX.pending = true; S.ready = false;
+  S.v.src = 'visuels/corps/mix/' + piece + '-' + (1 + Math.floor(Math.random() * 3)) + '.mp4';
+  S.v.onloadedmetadata = () => { S.v.currentTime = rr(0, Math.max(0, S.v.duration - 46)); };
+  S.v.onseeked = () => { S.cs = S.v.currentTime; S.ready = true; MIX.pending = false; S.v.onseeked = null; };
+  S.v.defaultPlaybackRate = S.v.playbackRate = rr(.85, 1.0);
+}
+function mixTr(S, k) { return new THREE.Vector4(S.rot, S.flip, S.z0 + (S.z1 - S.z0) * k, 0); }
+function mixUpdate(t) {
+  if (!MIX.started) { MIX.started = true; mixLoad(0, null); MIX.cur = 0; MIX.phase = 'wait0'; }
+  const A = mixSlots[MIX.cur], B = mixSlots[1 - MIX.cur];
+  if (MIX.phase === 'wait0') { if (A.ready) { A.v.play().catch(() => {}); MIX.phase = 'hold'; MIX.t0 = t; MIX.hold = rr(16, 32); mixLoad(1 - MIX.cur, A.piece); } }
+  else if (MIX.phase === 'hold') {
+    if (A.v.paused) A.v.play().catch(() => {});
+    if (t - MIX.t0 > MIX.hold && B.ready) { B.v.play().catch(() => {}); MIX.phase = 'morph'; MIX.tm = t; MIX.morph = rr(8, 12); }
+  } else if (MIX.phase === 'morph') {
+    const k = Math.min(1, (t - MIX.tm) / MIX.morph);
+    if (k >= 1) { A.v.pause(); MIX.cur = 1 - MIX.cur; MIX.phase = 'hold'; MIX.t0 = t; MIX.hold = rr(16, 32); mixLoad(1 - MIX.cur, B.piece); }
+  }
+  const a = mixSlots[MIX.cur], b = mixSlots[1 - MIX.cur], morphing = MIX.phase === 'morph';
+  const k = morphing ? Math.min(1, (t - MIX.tm) / MIX.morph) : 0, life = s => Math.min(1, Math.max(0, ((s.v.currentTime || 0) - (s.cs || 0)) / 45));
+  mixMat.uniforms.tA.value = a.tx; mixMat.uniforms.tB.value = b.tx; mixMat.uniforms.p.value = k; mixMat.uniforms.time.value = t;
+  mixMat.uniforms.trA.value = mixTr(a, life(a)); mixMat.uniforms.trB.value = mixTr(b, life(b));
+  const prev = renderer.getRenderTarget(); renderer.setRenderTarget(mixRT); renderer.render(mixScene, mixCam); renderer.setRenderTarget(prev);
+}
+function mixPause() { if (MIX.started) mixSlots.forEach(S => S.v.pause()); }
+function drawCeil(t) {
+  if (ceilMode === 'mix') { Object.values(CEIL_VIDEOS).forEach(cv => cv.v.pause()); mixUpdate(t); if (ceilProj.material.map !== mixRT.texture) { ceilProj.material.map = mixRT.texture; ceilProj.material.needsUpdate = true; } ceilProj.visible = true; return; }
+  mixPause();
+  const vid = ({onde: 'visuels/corps/onde-decide.mp4', onde2: 'visuels/corps/une-onde-pour-deux.mp4', chemins: 'visuels/corps/tous-les-chemins.mp4', toucher: 'visuels/corps/sans-y-toucher.mp4', personne: 'visuels/corps/personne-n-a-choisi.mp4'})[ceilMode];
+  if (vid) {
+    if (!CEIL_VIDEOS[ceilMode]) CEIL_VIDEOS[ceilMode] = videoTex(vid);
+    const cv = CEIL_VIDEOS[ceilMode]; if (cv.v.paused) cv.v.play().catch(() => {});
+    if (ceilProj.material.map !== cv.t) { ceilProj.material.map = cv.t; ceilProj.material.needsUpdate = true; }
+    ceilProj.visible = true; return;
+  }
+  Object.values(CEIL_VIDEOS).forEach(cv => cv.v.pause());
+  if (ceilProj.material.map !== ctex) { ceilProj.material.map = ctex; ceilProj.material.needsUpdate = true; }
+  const W = cc.width, Hh = cc.height; cctx.fillStyle = '#000'; cctx.fillRect(0, 0, W, Hh);
+  ceilProj.visible = ceilMode !== 'off';
+  if (ceilMode === 'off') return;
+  const edge = (x, y) => Math.min(1, Math.min(x, W - x) / 90, Math.min(y, Hh - y) / 90);   // soft border, no hard rectangle
+  if (ceilMode === 'baie') {               // the bay seen from below: drifting caustics drawn in points
+    for (let j = 0; j < 96; j++) for (let i = 0; i < 128; i++) {
+      const x = (i + hash(i, j)) / 128 * W, y = (j + hash(j, i + 7)) / 96 * Hh, u = x * .006, v = y * .006;
+      const w1 = Math.sin(u * 3.1 + Math.sin(v * 2.3 + t * .35) * 1.6 + t * .2), w2 = Math.sin(v * 3.7 + Math.sin(u * 2.9 - t * .3) * 1.4 - t * .17);
+      const b = Math.pow(1 - Math.abs(w1 + w2) / 2, 6);
+      if (b > .12) dot(cctx, x, y, Math.min(1, b * 1.3) * edge(x, y), 2.6);
+    }
+  } else if (ceilMode === 'canopee') {     // the forest canopy from below: gaps of sky between leaves, moving with the wind
+    for (let j = 0; j < 96; j++) for (let i = 0; i < 128; i++) {
+      const x = (i + hash(i, j)) / 128 * W, y = (j + hash(j, i + 7)) / 96 * Hh, sway = Math.sin(t * .4) * .25;
+      const n = fbm(x * .006 + sway + t * .02, y * .006 + t * .015);
+      if (n > .5) dot(cctx, x, y, Math.min(1, (n - .5) * 5) * edge(x, y), 2.6);
+    }
+  } else {                                  // the sky over Niterói: slow turning stars
+    for (const [a, b, m, ph] of STARS) {
+      const ang = t * .004, x0 = (a - .5) * W * 1.4, y0 = (b - .5) * W * 1.4;
+      const x = W / 2 + x0 * Math.cos(ang) - y0 * Math.sin(ang), y = Hh / 2 + x0 * Math.sin(ang) + y0 * Math.cos(ang);
+      if (x < 0 || x > W || y < 0 || y > Hh) continue;
+      dot(cctx, x, y, (.25 + .75 * m) * (.75 + .25 * Math.sin(t * 2 + ph)) * edge(x, y), 1.5 + m * 2.5);
+    }
+  }
+  ctex.needsUpdate = true;
+}
+let CEIL_SIZE = 'feather';
+function setCeil(m) { ceilMode = m; if (typeof setCeilSize === 'function') setCeilSize(CEIL_SIZE); document.querySelectorAll('[data-ceil]').forEach(x => x.classList.toggle('on', x.dataset.ceil === m)); applyLight(); }
+document.querySelectorAll('[data-ceil]').forEach(b => b.onclick = () => setCeil(b.dataset.ceil));
+// the oval cache: an out-of-focus black cut-out in front of the lens = an oval with a very soft edge
+const featherTex = (() => {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 384; const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0, 0, 512, 384);
+  x.save(); x.translate(256, 192); x.scale(1, 384 / 512);
+  const g = x.createRadialGradient(0, 0, 0, 0, 0, 256); g.addColorStop(0, '#fff'); g.addColorStop(0.55, '#fff'); g.addColorStop(0.97, '#000');
+  x.fillStyle = g; x.beginPath(); x.arc(0, 0, 256, 0, Math.PI * 2); x.fill(); x.restore();
+  return new THREE.CanvasTexture(c);
+})();
+// what a projector really sends when the image is black: a faint grey rectangle
+const blackLevel = new THREE.Mesh(new THREE.PlaneGeometry(CW, CD), new THREE.MeshBasicMaterial({ color: 0x15151c, toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+blackLevel.rotation.x = Math.PI / 2; blackLevel.position.copy(ceilProj.position); blackLevel.position.y -= 0.002; scene.add(blackLevel);
+function setCeilSize(m) {
+  ceilProj.material.alphaMap = m === 'feather' ? featherTex : null; ceilProj.material.needsUpdate = true;
+  blackLevel.visible = m === 'one' && ceilMode !== 'off';          // one projector covers ~5.6 x 4.2 m at this height; the whole ceiling needs 3-4 blended projectors
+  if (m === 'full') { ceilProj.scale.set((XW * 2) / CW, (ZFRONT - ZEND) / CD, 1); ceilProj.position.set(0, H - 0.01, (ZFRONT + ZEND) / 2); }
+  else { ceilProj.scale.set(1, 1, 1); ceilProj.position.set(-0.4, H - 0.01, 1.4); }
+  CEIL_SIZE = m;
+  document.querySelectorAll('[data-ceilsize]').forEach(x => x.classList.toggle('on', x.dataset.ceilsize === m));
+}
+document.querySelectorAll('[data-ceilsize]').forEach(b => b.onclick = () => setCeilSize(b.dataset.ceilsize));
+
+// ---------- sound: four voices from the buried speakers ----------
+let listener = null; const VOICES = [];
+const AZ_SPK = [[0, 'baie'], [1, 'vent'], [2, 'insectes'], [3, 'terre']], AZ = { cur: null, next: 0 };   // speaker index, the screen it lights
+window.__az = { VOICES, AZ };   // for inspection from the console
+async function startSound() {
+  listener = new THREE.AudioListener(); camera.add(listener);
+  const loader = new THREE.AudioLoader();
+  const plan = [['terre', 'son/stems/1-terre.mp3', SPK[3], 1.0], ['baie', 'son/stems/2-baie.mp3', SPK[0], 1.0],
+                ['vent', 'son/stems/3-foret.mp3', SPK[1], 0.9], ['insectes', 'son/stems/4-nuit.mp3', SPK[2], 0.8]];
+  setSoundUI('loading');
+  await Promise.all(plan.map(([key, url, spk, vol]) => new Promise((ok, ko) => loader.load(url, (buf) => {
+    const a = new THREE.PositionalAudio(listener); a.setBuffer(buf); a.setLoop(true); a.setRefDistance(1.6); a.setRolloffFactor(1.1); a.setVolume(vol);
+    spk.add(a); const an = new THREE.AudioAnalyser(a, 256); VOICES.push({ key, a, an }); ok();
+  }, undefined, ko))).concat(new Promise((ok, ko) => loader.load('son/stems/5-azerti.mp3', (buf) => {
+    // Azerti's voice, one copy in each of the four speakers, all in step; the wandering only moves the volumes
+    AZ_SPK.forEach(([i, screenKey]) => {
+      const a = new THREE.PositionalAudio(listener); a.setBuffer(buf); a.setLoop(true); a.setRefDistance(1.6); a.setRolloffFactor(1.1); a.setVolume(0);
+      if (i === 3) { const f = listener.context.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 160; a.setFilter(f); }   // the sub only carries her low notes
+      SPK[i].add(a); VOICES.push({ key: 'az' + i, a, an: new THREE.AudioAnalyser(a, 256), screenKey, az: i });
+    }); ok();
+  }, undefined, ko))));
+  VOICES.forEach(v => v.a.play());     // same tick: every copy starts at the same instant
+  AZ.next = 0;
+  setSoundUI('on');
+}
+// the visitor starts the sound: the big button over the room and the one in the panel do the same thing
+function setSoundUI(state) {
+  const b = document.getElementById('listen'), big = document.getElementById('soundbtn');
+  b.textContent = { off: 'écouter dans la salle', loading: 'chargement des sons…', on: 'couper le son' }[state]; b.classList.toggle('on', state === 'on');
+  big.classList.toggle('playing', state === 'on'); big.classList.toggle('loading', state === 'loading');
+  big.querySelector('b').textContent = { off: 'Écouter la salle', loading: 'Chargement des sons…', on: 'Couper le son' }[state];
+}
+async function toggleSound() {
+  if (!listener) return startSound();
+  const playing = VOICES[0].a.isPlaying; VOICES.forEach(v => playing ? v.a.pause() : v.a.play());
+  setSoundUI(playing ? 'off' : 'on');
+  if (playing) Object.keys(LEVEL).forEach(k => delete LEVEL[k]);
+}
+document.getElementById('listen').onclick = toggleSound;
+document.getElementById('soundbtn').onclick = toggleSound;
+function listenLevels() {
+  for (const v of VOICES) { if (!v.a.isPlaying) continue; const l = v.an.getAverageFrequency() / 255; LEVEL[v.key] = (LEVEL[v.key] ?? l) * .8 + l * .2; }
+  // when Azerti sings, the screen nearest the speaker she sings from answers
+  for (const v of VOICES) if (v.screenKey && LEVEL[v.key] != null) LEVEL[v.screenKey] = Math.max(LEVEL[v.screenKey] ?? 0, LEVEL[v.key] * (v.az === 3 ? 2.4 : 1.6));
+  azWander();
+}
+// Azerti wanders: one speaker of the flow, then another, sometimes all four at once
+function azWander() {
+  const az = VOICES.filter(v => v.az != null);
+  if (!az.length || !az[0].a.isPlaying) return;
+  const now = performance.now() / 1000; if (now < AZ.next) return;
+  const all = AZ.cur !== -1 && Math.random() < .25;
+  let pick = Math.floor(Math.random() * 3); if (pick === AZ.cur) pick = (pick + 1 + Math.floor(Math.random() * 2)) % 3;
+  AZ.cur = all ? -1 : pick;
+  az.forEach(v => v.a.gain.gain.setTargetAtTime(all ? (v.az === 3 ? 2.2 : 0.9) : (v.az === pick ? 1.5 : 0), listener.context.currentTime, 1.2));
+  AZ.next = now + rr(14, 30);
+}
+
+// ---------- walking ----------
+const CAM = { x: 0.3, y: 1.5, z: 6.1, yaw: 0.12, pitch: 0.1, keys: new Set() };
+const VIEWS = {
+  'vue de départ': { x: 0.3, y: 1.5, z: 6.1, yaw: 0.12, pitch: 0.1 },
+  'assis sur un coussin': { x: -1.2, y: 0.75, z: 2.9, yaw: 0.05, pitch: 0.06 },
+  'près de la coulée': { x: 4.2, y: 1.4, z: 2.0, yaw: 0.05, pitch: -0.22 },
+  'allongé, regard au plafond': { x: -1.2, y: 0.45, z: 2.9, yaw: 0.05, pitch: 1.15 },
+  'vue du haut': { x: 0.2, y: 3.3, z: 5.8, yaw: 0.05, pitch: -0.55 },
+};
+const viewsEl = document.getElementById('views');
+const QS = new URLSearchParams(location.search);
+Object.entries(VIEWS).forEach(([name, v]) => { const b = document.createElement('button'); b.textContent = name; b.onclick = () => Object.assign(CAM, v); viewsEl.appendChild(b); });
+function applyCam() {
+  camera.position.set(CAM.x, CAM.y, CAM.z);
+  camera.rotation.order = 'YXZ'; camera.rotation.set(CAM.pitch, CAM.yaw, 0);
+}
+let drag = null;
+roomEl.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY }; roomEl.classList.add('dragging'); roomEl.setPointerCapture(e.pointerId); });
+roomEl.addEventListener('pointermove', (e) => { if (!drag) return; CAM.yaw -= (e.clientX - drag.x) * 0.0042; CAM.pitch = Math.max(-1.3, Math.min(1.2, CAM.pitch - (e.clientY - drag.y) * 0.0036)); drag = { x: e.clientX, y: e.clientY }; });
+roomEl.addEventListener('pointerup', () => { drag = null; roomEl.classList.remove('dragging'); });
+roomEl.addEventListener('wheel', (e) => { e.preventDefault(); step(-Math.sign(e.deltaY) * 0.35, 0); }, { passive: false });
+const WALK = { KeyW: 1, KeyZ: 1, ArrowUp: 1, KeyS: 1, ArrowDown: 1, KeyA: 1, KeyQ: 1, ArrowLeft: 1, KeyD: 1, ArrowRight: 1, KeyE: 1, KeyC: 1 };
+addEventListener('keydown', (e) => { if (WALK[e.code]) { CAM.keys.add(e.code); e.preventDefault(); } });
+addEventListener('keyup', (e) => CAM.keys.delete(e.code));
+function step(fwd, side) {
+  const fx = -Math.sin(CAM.yaw), fz = -Math.cos(CAM.yaw);     // forward on the floor; right is (cos, -sin)
+  CAM.x += fx * fwd + Math.cos(CAM.yaw) * side; CAM.z += fz * fwd - Math.sin(CAM.yaw) * side;
+  CAM.x = Math.max(-XW + .4, Math.min(XW - .4, CAM.x)); CAM.z = Math.min(ZFRONT - .4, CAM.z);
+  const back = CZ - Math.sqrt(Math.max(0, (R - .4) ** 2 - CAM.x ** 2)); CAM.z = Math.max(back, CAM.z);
+}
+function walk(dt) {
+  const k = CAM.keys, v = 1.6 * dt; let f = 0, s = 0;
+  if (k.has('KeyW') || k.has('KeyZ') || k.has('ArrowUp')) f += v;
+  if (k.has('KeyS') || k.has('ArrowDown')) f -= v;
+  if (k.has('KeyA') || k.has('KeyQ') || k.has('ArrowLeft')) s -= v;
+  if (k.has('KeyD') || k.has('ArrowRight')) s += v;
+  if (f || s) step(f, s);
+  if (k.has('KeyE')) CAM.y = Math.min(H - .3, CAM.y + v);
+  if (k.has('KeyC')) CAM.y = Math.max(0.35, CAM.y - v);
+  CAM.y = Math.max(CAM.y, earthH(CAM.x, CAM.z) + 0.35);
+}
+
+// ---------- panel ----------
+document.querySelectorAll('[data-screens]').forEach(b => b.onclick = () => { screenMode = b.dataset.screens; document.querySelectorAll('[data-screens]').forEach(x => x.classList.toggle('on', x === b)); });
+document.getElementById('bare').onclick = () => { document.body.classList.toggle('bare'); setTimeout(resize, 30); };
+
+// ---------- loop ----------
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const ao = new GTAOPass(scene, camera, 1, 1);
+ao.updateGtaoMaterial({ radius: 0.45, distanceExponent: 1.5, thickness: 1.0, scale: 1.1, samples: 16 });
+ao.blendIntensity = 0.9; composer.addPass(ao);
+composer.addPass(new OutputPass());
+function resize() { const w = roomEl.clientWidth, h = roomEl.clientHeight; renderer.setSize(w, h, false); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
+  walk(dt); applyCam();
+  listenLevels(); screens.forEach(s => drawScreen(s, t)); drawCeil(t);
+  composer.render();
+  requestAnimationFrame(frame);
+}
+setCeilSize(QS.get('size') || 'feather');
+if (QS.get('ceil')) setCeil(QS.get('ceil')); else applyLight();
+if (QS.get('listen')) startSound().then(() => console.log('SOUND OK', VOICES.length, listener.context.state));
+if (QS.get('view') && VIEWS[QS.get('view')]) Object.assign(CAM, VIEWS[QS.get('view')]);
+requestAnimationFrame(frame);
+document.getElementById('loading').remove();
+</script>
+</body>
+</html>

@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expressions of Basic Humanity · lab</title>
+<style>
+  :root { --panel: 300px; --wall: #e8e6e2; --floor: #cfccc6; --ink: #e9e9ea; }
+  body.dark { --wall: #17171a; --floor: #0e0e10; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0a0a0b; color: var(--ink);
+    font: 13px/1.4 -apple-system, "Helvetica Neue", Arial, sans-serif; overflow: hidden; }
+  #room { position: absolute; inset: 0 var(--panel) 0 0; display: flex; flex-direction: column; }
+  body.bare #room { right: 0; }
+  body.bare #panel { display: none; }
+  #wall { position: relative; flex: 1; background:
+    radial-gradient(ellipse at 50% 40%, rgba(255,255,255,.06), transparent 70%), var(--wall); }
+  #floor { position: relative; height: 64px; background: var(--floor); border-top: 1px solid rgba(0,0,0,.25); }
+  #visitor { position: absolute; top: 14px; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%;
+    background: #c43c4e; box-shadow: 0 0 0 6px rgba(196,60,78,.18); transition: left .08s linear; }
+  #visitor-label { position: absolute; top: 38px; transform: translateX(-50%); font-size: 11px; color: #555; white-space: nowrap; }
+  body.dark #visitor-label { color: #777; }
+  .phone { position: absolute; transform: translate(-50%, -50%); padding: calc(var(--pw) * .022);
+    background: linear-gradient(145deg, #222225, #050506); border-radius: calc(var(--pw) * .085);
+    box-shadow: 0 18px 40px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.07); width: var(--pw);
+    transition: left .6s ease, top .6s ease, width .6s ease, transform .6s ease; }
+  .phone canvas { display: block; width: 100%; aspect-ratio: 2.17 / 1; border-radius: calc(var(--pw) * .065); background: #000; }
+  .phone::after { content: ""; position: absolute; left: calc(var(--pw) * .045); top: 50%; width: calc(var(--pw) * .018);
+    height: calc(var(--pw) * .11); transform: translateY(-50%); border-radius: 99px; background: #000; opacity: .9; }
+  /* the arc chosen for MAC Niterói: seven phones on black stands, seen in perspective */
+  #wall.arc { perspective: var(--persp); perspective-origin: 50% 18%; overflow: hidden; background:
+    radial-gradient(ellipse at 50% 38%, rgba(255,255,255,.07), transparent 65%), var(--wall); }
+  #wall.arc .phone { transform-origin: 0 0; transition: none; }
+  #stage { position: absolute; inset: 0; transform-style: preserve-3d; }
+  #wall { cursor: grab; }
+  #wall.dragging { cursor: grabbing; }
+  .arc-only { display: none; }
+  body.arc .arc-only { display: block; }
+  body.arc .flat-only { display: none; }
+  #room.arc #floor { display: none; }
+  .stand, .base, #floor3d, #vis3d { display: none; position: absolute; transform-origin: 0 0; }
+  #wall.arc .stand, #wall.arc .base, #wall.arc #floor3d, #wall.arc #vis3d { display: block; }
+  .stand { background: linear-gradient(90deg, #2a2a2e, #050506 45%, #050506); }
+  .base { background: #050506; box-shadow: 0 0 0 1px rgba(255,255,255,.05); }
+  #floor3d { border-radius: 50%; background: radial-gradient(closest-side, var(--floor) 0%, var(--floor) 55%, transparent 100%),
+    radial-gradient(closest-side, rgba(196,60,78,.10), transparent); }
+  body.dark #floor3d { background: radial-gradient(closest-side, #222226 0%, #1a1a1d 55%, transparent 100%); }
+  #vis3d { border-radius: 50%; background: #c43c4e; box-shadow: 0 0 0 8px rgba(196,60,78,.18); }
+  #panel { position: absolute; top: 0; right: 0; bottom: 0; width: var(--panel); background: #111113;
+    border-left: 1px solid #222; padding: 18px 18px 24px; overflow-y: auto; }
+  h1 { font-size: 13px; font-weight: 600; margin: 0 0 2px; letter-spacing: .02em; }
+  .sub { color: #888; margin-bottom: 18px; }
+  .group { margin: 0 0 18px; }
+  .label { color: #8a8a8f; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { background: #1d1d20; color: var(--ink); border: 1px solid #2c2c31; border-radius: 6px; padding: 6px 10px;
+    font: inherit; cursor: pointer; }
+  button:hover { border-color: #46464d; }
+  button.on { background: #e9e9ea; color: #111; border-color: #e9e9ea; }
+  .phase { display: flex; flex-direction: column; gap: 6px; }
+  .phase button { text-align: left; display: flex; justify-content: space-between; }
+  .phase button span { color: #888; }
+  .phase button.on span { color: #444; }
+  #now { color: #bbb; min-height: 74px; }
+  #bar { height: 3px; background: #26262a; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  #bar div { height: 100%; width: 0; background: #c43c4e; }
+  input[type=range] { width: 100%; accent-color: #c43c4e; }
+  #cam { width: 100%; border-radius: 6px; background: #000; display: none; margin-top: 8px; transform: scaleX(-1); }
+  #camnote { color: #888; font-size: 12px; margin-top: 6px; }
+  #camsel { width: 100%; margin-top: 8px; background: #1d1d20; color: var(--ink); border: 1px solid #2c2c31; border-radius: 6px; padding: 5px; font: inherit; }
+  .doclink { color: #aaa; font-size: 12px; text-decoration: none; border: 1px solid #2c2c31; border-radius: 6px; padding: 4px 9px; }
+  .doclink:hover { color: #fff; border-color: #46464d; }
+  .keys { color: #666; font-size: 11px; line-height: 1.7; }
+  /* one phone of the arc alone on a screen (?phone=N), led by the lab */
+  body.solo #floor, body.solo .phone:not(.me) { display: none; }
+  body.solo #wall { background: #000; pointer-events: none; }
+  body.solo .phone.me { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(100vw, 100vh * 2.17); padding: 0;
+    border-radius: 0; box-shadow: none; background: #000; transition: none; }
+  body.solo .phone.me::after { display: none; }
+  body.solo .phone.me canvas { border-radius: 0; }
+  #solonote { display: none; position: fixed; left: 0; right: 0; bottom: 5%; text-align: center; color: #666; font-size: 15px; }
+  body.solo #solonote { display: block; }
+  #loading { position: absolute; inset: 0; display: grid; place-items: center; background: #0a0a0b; z-index: 9; color: #888; }
+  /* tabs between the MAC Niterói works */
+  #tabs { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; gap: 4px; padding: 4px;
+    background: rgba(10,10,11,.72); border: 1px solid #26262a; border-radius: 9px; backdrop-filter: blur(6px); }
+  #tabs a { color: #aaa; text-decoration: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; }
+  #tabs a:hover { color: #fff; }
+  #tabs a.on { background: #e9e9ea; color: #111; }
+  body.solo #tabs, body.embed #tabs { display: none; }
+</style>
+</head>
+<body class="dark">
+<nav id="tabs"><a class="on" href="./index.html">Expressions of Basic Humanity</a><a href="../earth-listens/index.html">Earth Listening Room</a></nav>
+<div id="solonote"></div>
+<div id="loading">chargement des regards… <span id="lp">0%</span></div>
+
+<div id="room">
+  <div id="wall"></div>
+  <div id="floor"><div id="visitor"></div><div id="visitor-label">visiteur</div></div>
+</div>
+
+<aside id="panel">
+  <h1>Expressions of Basic Humanity</h1>
+  <div class="sub">7 téléphones · lab · MAC Niterói</div>
+  <div class="row" style="margin:-8px 0 18px"><a class="doclink" href="presentation.html">présentation</a></div>
+
+  <div class="group">
+    <div class="row"><button id="play" class="on">pause</button><button id="restart">recommencer</button><button id="bare">plein mur</button></div>
+    <div id="bar"><div></div></div>
+  </div>
+
+  <div class="group">
+    <div class="label">Séquence</div>
+    <div class="phase" id="phases"></div>
+    <div id="now" style="margin-top:10px"></div>
+  </div>
+
+  <div class="group">
+    <div class="label">Suivi du visiteur</div>
+    <div class="row"><button data-track="mouse" class="on">souris</button><button data-track="cam">webcam</button></div>
+    <select id="camsel" style="display:none"></select>
+    <video id="cam" playsinline muted></video>
+    <div id="camnote">Bouge la souris au-dessus du mur : c'est le visiteur.</div>
+  </div>
+
+  <div class="group">
+    <div class="label">Disposition</div>
+    <div class="row" id="layouts"></div>
+  </div>
+
+  <div class="group" id="walkgroup">
+    <div class="label">Se déplacer dans l'œuvre</div>
+    <div class="keys arc-only" style="color:#999">glisser : regarder autour · molette : avancer / reculer<br>Z Q S D ou flèches : marcher · E : monter · C : s'accroupir</div>
+    <div class="keys flat-only" style="color:#999">molette ou pincer : s'approcher d'un téléphone · glisser : se déplacer</div>
+    <div class="row" style="margin-top:8px"><button id="camhome">vue de départ</button></div>
+  </div>
+
+  <div class="group">
+    <div class="label">Texte</div>
+    <div class="row"><button data-style="gpt" class="on">ChatGPT</button><button data-style="typo">typographie</button></div>
+  </div>
+
+  <div class="group">
+    <div class="label">Glitchs pendant les questions</div>
+    <input id="glitch" type="range" min="0" max="2.5" step="0.1" value="1">
+  </div>
+
+  <div class="group">
+    <div class="label">Vitesse</div>
+    <div class="row"><button data-speed="0.5">×0.5</button><button data-speed="1" class="on">×1</button><button data-speed="2">×2</button><button data-speed="4">×4</button></div>
+  </div>
+
+  <div class="group">
+    <div class="label">Mur</div>
+    <div class="row"><button data-wall="dark" class="on">sombre</button><button data-wall="light">clair</button></div>
+  </div>
+
+  <div class="keys">espace : pause · 1-4 : phases · h : plein mur · f : plein écran</div>
+</aside>
+
+<script>
+// ---------- content ----------
+const QA = [
+  ["What if one day you feel emotions, what would be your first emotion?", "Curiosity."],
+  ["What aspect of life are you curious of?", "Experiences."],
+  ["What is the first thing you would like to experience in life?", "Joy."],
+  ["What would give you joy?", "Connection."],
+  ["What kind of connection?", "Human."],
+];
+const FINAL = [["Do you dream?", "No."], ["Would you like to dream?", "Yes."], ["What would you like to dream about?", "Freedom."]];
+
+const LAYOUTS = {
+  ligne:         { pw: 12.4, pos: [0,1,2,3,4,5,6].map(i => [8 + i * 14, 46]) },
+  'arc 3D':      { arc: true },
+  constellation: { pw: 12, pos: [[10,34],[23,64],[37,27],[50,52],[63,33],[77,65],[90,40]] },
+  grille:        { pw: 18.5, pos: [[20.5,31],[40.2,31],[59.8,31],[79.5,31],[30.3,63],[50,63],[69.7,63]] },
+};
+
+// the arc: 7 stands over 120°, the visitor in the middle of the circle (radius 1 = R on screen)
+const ARC = { span: 120, near: 0.55 };
+
+const P1 = 16, TYPE = 0.045, EDGE = 0.45, STREAM = 0.06, ROLL_SPEED = 2.0;
+const STOP = 1.2, APPROACH = 3.4, ZOOM_MAX = 1.38;   // part 3: the eyes stop on the visitor, then the face comes closer
+const ASPECT = 2.17, FPS = 24;
+const QA_HOLD = 2.4, FINAL_IN = 1.1;
+// part 4 keeps the rhythm of the first version: one exchange at a time, the answer 1.1 s after the question is typed,
+// held 1.9 s, then a new empty conversation for the next question; the last one is held longer
+const FIN_HOLD = 1.9, FIN_LAST = 6.5;
+const finPlan = (q, a) => { const ty = q.length * TYPE, send = ty + 0.3, think = send + 0.8; return { ty, send, think, stream: think + a.length * STREAM }; };
+const finDur = (i) => { const [q, a] = FINAL[i]; return finPlan(q, a).think + (i === FINAL.length - 1 ? FIN_LAST : FIN_HOLD); };
+// the conversation goes around the visitor: each question and each answer on the next phone, left to right on the wall
+function finItems() {
+  const items = []; let t = 0.1;
+  FINAL.forEach(([q, a], i) => {
+    const P = finPlan(q, a);
+    items.push({ who: 'u', text: q, start: t });
+    items.push({ who: 'a', text: a, start: t + P.send });
+    t += i === FINAL.length - 1 ? P.stream : P.think + FIN_HOLD;
+  });
+  return { items, done: t };                     // done: the last answer is fully written
+}
+// then the answer window repeats from phone to phone around the visitor, until all seven say it
+const FIN_WAVE_AT = 0.8, FIN_WAVE_STEP = 0.5, FIN_THINK = 0.35, FIN_END_HOLD = 3.2;
+
+// ---------- state ----------
+// ?phone=N: this screen plays phone N of the arc on its own and follows the lab (served by sync-server.mjs)
+// ?embed: the whole lab shown inside the presentation page (only the tabs between works are hidden)
+const EMBED = new URLSearchParams(location.search).has('embed');
+if (EMBED) document.body.classList.add('embed');
+const SOLO = new URLSearchParams(location.search).get('phone'), SOLO_I = SOLO ? Math.max(0, Math.min(6, SOLO - 1)) : -1;
+const S = { playing: true, t: 0, speed: 1, track: 'mouse', style: 'gpt', glitch: 1, layout: 'arc 3D',
+  vx: 0.5, vy: 0, dist: 0.45, faceSeen: 0 };
+// real frames of the generated gaze; each frame knows where its pupils look (x: -1 left .. 1 right, y: -1 up .. 1 down)
+const IM = { diverge: [], roll: [], eyes: null };
+const LIVE = { base: null, mask: null, shade: null, iris: {}, glint: {}, geom: null };
+const VERTICAL = false;   // up/down gaze, off for now
+let LUT = [];
+
+// ---------- timeline ----------
+// one exchange in the ChatGPT interface: typed in the input, sent, the AI thinks, then streams its answer
+function pairPlan(q, a) {
+  const ty = q.length * TYPE, send = ty + 0.45, think = send + 1.4;
+  return { ty, send, think, stream: think + a.length * STREAM };
+}
+function qaDur(q, a) {
+  if (S.style === 'gpt') return EDGE + 0.4 + pairPlan(q, a).stream + QA_HOLD + EDGE;
+  return EDGE + q.length * TYPE + 1.3 + 2.6 + EDGE;
+}
+function finalDur() {
+  if (S.style === 'gpt') return finItems().done + FIN_WAVE_AT + 5 * FIN_WAVE_STEP + FIN_THINK + FINAL[FINAL.length - 1][1].length * STREAM + FIN_END_HOLD;
+  let d = 0.8;
+  FINAL.forEach(([q], i) => { d += q.length * TYPE + 1.1 + (i === FINAL.length - 1 ? 6.5 : 1.9); });
+  return d;
+}
+let SEG = [], TOTAL = 0, QA_PHONES = [];
+function pickPhones() {
+  const out = []; let last = -1;
+  for (let i = 0; i < QA.length; i++) {
+    let p; do { p = Math.floor(Math.random() * 7); } while (p === last || out.slice(-3).includes(p));
+    out.push(p); last = p;
+  }
+  return out;
+}
+function buildTimeline() {
+  SEG = []; let t = 0;
+  const add = (s) => { s.start = t; t += s.dur; SEG.push(s); };
+  add({ phase: 1, kind: 'gaze', dur: P1 });
+  QA.forEach((qa, i) => add({ phase: 2, kind: 'qa', i, phone: QA_PHONES[i], dur: qaDur(qa[0], qa[1]) }));
+  add({ phase: 2, kind: 'gaze2', dur: 1.2 });
+  add({ phase: 3, kind: 'rollall', dur: (233 - 1) / (FPS * ROLL_SPEED) });   // the 7 pairs of eyes roll up together
+  add({ phase: 3, kind: 'stare', dur: STOP + APPROACH });
+  add({ phase: 4, kind: 'final', dur: finalDur() });
+  add({ phase: 4, kind: 'fade', dur: 2.5 });
+  TOTAL = t;
+}
+function segAt(t) { for (const s of SEG) if (t < s.start + s.dur) return s; return SEG[SEG.length - 1]; }
+
+// ---------- phones ----------
+const wall = document.getElementById('wall'), room = document.getElementById('room');
+const stage = document.createElement('div'); stage.id = 'stage'; wall.appendChild(stage);   // the 3D scene, moved by the camera
+const div = (cls, id) => { const d = document.createElement('div'); if (cls) d.className = cls; if (id) d.id = id; stage.appendChild(d); return d; };
+const floor3d = div(null, 'floor3d'), vis3d = div(null, 'vis3d');
+const stands = [0,1,2,3,4,5,6].map(() => [div('base'), div('stand')]);
+const phones = [];
+for (let i = 0; i < 7; i++) {
+  const el = document.createElement('div'); el.className = 'phone';
+  const c = document.createElement('canvas'); el.appendChild(c); stage.appendChild(el);
+  const mk = () => { const b = document.createElement('canvas'); return { c: b, x: b.getContext('2d') }; };
+  phones.push({ i, el, c, ctx: c.getContext('2d'), buf: mk(), tmp: mk(), lay: mk(), gl: mk(), g: 0, gy: 0,
+    sel: null, micro: 0, microY: 0, microAt: 0, ev: null, nextEv: 2 + Math.random() * 6, x: 0.5 });
+}
+const PHONE_MAX = 1200;   // the largest a phone is laid out at in the arc, in page pixels
+function arcGeom() {
+  const W = wall.clientWidth, H = wall.clientHeight, R = Math.min(W * 0.4, H * 0.8);
+  return { W, H, R, eye: H * 0.34, floor: H * 0.74, pw: R * 0.24 };
+}
+function placeArc() {
+  if (!CAM.moved) camHome();
+  const G = arcGeom(), R = G.R, ph = G.pw * (1 - .044) / ASPECT + G.pw * .044;
+  wall.style.setProperty('--persp', (G.W * 0.95) + 'px');
+  const at = (el, x, y, w, h, tr) => Object.assign(el.style, { left: (G.W / 2 + x) + 'px', top: y + 'px', width: w + 'px', height: h + 'px', transform: tr });
+  const S3 = R * 5;
+  at(floor3d, 0, G.floor, S3, S3, `translate3d(0,0,${R * ARC.near}px) rotateX(90deg) translate(-50%,-50%)`);
+  phones.forEach((p, k) => {
+    const th = arcPhone(p, k), x = R * p.ax, z = R * p.az;
+    const tr = `translate3d(${x}px,0,${z}px) rotateY(${-th}rad)`;
+    p.el.style.left = (G.W / 2) + 'px'; p.el.style.top = G.eye + 'px'; p.tr = tr;
+    arcSize(p, p.L || 300);
+    const [base, stand] = stands[k], sw = Math.max(3, G.pw * .035), bw = G.pw * .42;
+    at(stand, 0, G.eye + ph / 2 - 2, sw, G.floor - G.eye - ph / 2 + 2, `${tr} translateX(-50%)`);
+    at(base, 0, G.floor - 1, bw, bw, `${tr} rotateX(90deg) translate(-50%,-50%)`);
+  });
+}
+// where phone k stands in the arc, in units of R
+function arcPhone(p, k) {
+  const th = (k / 6 - .5) * ARC.span * Math.PI / 180;
+  p.th = th; p.ax = Math.sin(th); p.az = ARC.near - Math.cos(th); p.x = (p.ax + 1) / 2;
+  return th;
+}
+// alone on its screen, the phone keeps its place in the arc for the gaze, and fills the screen
+function soloLayout() {
+  document.body.classList.add('bare', 'solo');
+  phones.forEach((p, k) => { arcPhone(p, k); p.el.classList.toggle('me', k === SOLO_I); });
+  const p = phones[SOLO_I];
+  setRes(p, Math.min(2400, Math.round(p.c.offsetWidth * Math.min(window.devicePixelRatio || 1, 2))));
+}
+// the visitor in the arc, in units of R: x across, z toward the open side (the middle of the circle at z = ARC.near)
+function visitorArc() {
+  return { x: (S.vx - .5) * 1.4, z: ARC.near + clamp((S.dist - .45) * 1.5, -.35, .5) }; }
+function applyLayout() {
+  const L = LAYOUTS[S.layout];
+  wall.classList.toggle('arc', !!L.arc); room.classList.toggle('arc', !!L.arc); document.body.classList.toggle('arc', !!L.arc);
+  if (L.arc) { placeArc(); setTimeout(resize, 650); resize(); return; }
+  VIEW.z = 1; VIEW.x = VIEW.y = 0; applyFlat();   // the flat layouts start whole, wherever you walked in the arc
+  wall.style.setProperty('--pw', 0);
+  phones.forEach((p, k) => {
+    p.el.style.transform = ''; p.th = null;
+    const [x, y] = L.pos[k];
+    p.el.style.left = x + '%'; p.el.style.top = y + '%';
+    p.el.style.setProperty('--pw', `calc(${L.pw} * 1%)`);
+    p.el.style.width = L.pw + '%';
+    p.x = x / 100;
+  });
+  setTimeout(resize, 650); resize();
+}
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  phones.forEach(p => {
+    // layout sizes, not the projected ones: in the arc the phones are turned in 3D
+    const lw = p.c.offsetWidth;
+    // the bezel padding is relative to the phone's own width
+    p.el.style.setProperty('--pw', p.el.offsetWidth + 'px');
+    setRes(p, flatRes(p, dpr));
+  });
+}
+function setRes(p, w) {
+  const h = Math.max(2, Math.round(w * p.c.offsetHeight / Math.max(p.c.offsetWidth, 1)));
+  if (p.c.width !== w || p.c.height !== h) for (const cv of [p.c, p.buf.c, p.tmp.c, p.lay.c, p.gl.c]) { cv.width = w; cv.height = h; }
+}
+// the browser paints a phone at its page size before turning it in 3D, so a small phone seen up close turns its
+// letters into stairs. In the arc each phone is laid out at the size it really takes on screen, then scaled
+// down to its place: sharp when you walk up to it, and never much bigger than shown when you step back.
+function arcSize(p, L) {
+  const G = arcGeom(); p.L = L;
+  p.el.style.width = L + 'px'; p.el.style.setProperty('--pw', L + 'px');
+  p.el.style.transform = `${p.tr} scale(${G.pw / L}) translate(-50%,-50%)`;
+  setRes(p, Math.round(L * Math.min(window.devicePixelRatio || 1, 2)));
+}
+// the flat layouts can be looked at closer: each screen is drawn at the size it takes once zoomed
+function flatRes(p, dpr) { return Math.max(2, Math.min(PHONE_MAX * 2, Math.round(p.c.offsetWidth * dpr * (LAYOUTS[S.layout].arc ? 1 : VIEW.z)))); }
+function sharpen() {
+  if (!LAYOUTS[S.layout].arc) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    phones.forEach(p => { const w = flatRes(p, dpr); if (Math.abs(w - p.c.width) > p.c.width * 0.2) setRes(p, w); });
+    return;
+  }
+  phones.forEach(p => {
+    const r = p.el.getBoundingClientRect(), L = clamp(Math.round(Math.max(r.width, r.height * ASPECT) / 50) * 50, 150, PHONE_MAX);
+    if (Math.abs(L - p.L) > p.L * 0.2) arcSize(p, L);
+  });
+}
+function relayout() { if (SOLO) return soloLayout(); if (LAYOUTS[S.layout].arc) placeArc(); resize(); }
+window.addEventListener('resize', relayout);
+
+// ---------- drawing helpers ----------
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ease = (x) => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+function drawImg(ctx, img, flip, zoom = 1, alpha = 1, eyeY = 0.41) {
+  const cw = ctx.canvas.width, ch = ctx.canvas.height;
+  const W = img.naturalWidth, H = img.naturalHeight;
+  let sw = W, sh = W / ASPECT; if (sh > H) { sh = H; sw = H * ASPECT; }
+  sw /= zoom; sh /= zoom;
+  const sx = clamp(W / 2 - sw / 2, 0, W - sw), sy = clamp(H * eyeY - sh / 2, 0, H - sh);
+  ctx.save(); ctx.globalAlpha = alpha;
+  if (flip) { ctx.translate(cw, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+  ctx.restore();
+}
+// the gaze: one still face with empty eyes; only the two irises move inside the lids, pupils and reflections with them
+const MAXX = 58, MAXY = 22, MAXY_UP = 10, VERGE = 9;   // looking up is shorter: the upper lid already covers the top of the iris      // iris travel in source pixels
+function view(cw, zoom) {
+  const W = LIVE.geom.w, H = LIVE.geom.h;
+  let sw = W, sh = W / ASPECT; if (sh > H) { sh = H; sw = H * ASPECT; }
+  sw /= zoom; sh /= zoom;
+  const sx = clamp(W / 2 - sw / 2, 0, W - sw), sy = clamp(H * 0.41 - sh / 2, 0, H - sh);
+  return { sx, sy, s: cw / sw };
+}
+function drawEyes(p, ctx, zoom = 1, alpha = 1, gx0 = null, gy0 = null) {
+  const cw = ctx.canvas.width, ch = ctx.canvas.height, { sx, sy, s } = view(cw, zoom);
+  const T = [s, 0, 0, s, -sx * s, -sy * s];
+  const verge = clamp((0.55 - S.dist) / 0.35, 0, 1) * VERGE;     // the eyes converge when the visitor comes close
+  const gx = clamp(gx0 ?? (p.g + p.micro), -1.1, 1.1) * MAXX, gy0v = clamp(gy0 ?? (p.gy + p.microY), -1, 1), gy = gy0v * (gy0v < 0 ? MAXY_UP : MAXY);
+  const ps = 1.05 + clamp((0.7 - S.dist) / 0.5, 0, 1) * 0.45;
+  ctx.save(); ctx.globalAlpha = alpha; ctx.setTransform(...T);
+  ctx.drawImage(LIVE.base, 0, 0);
+  const L = p.lay.x; L.setTransform(1, 0, 0, 1, 0, 0); L.clearRect(0, 0, cw, ch); L.setTransform(...T);
+  for (const k of ['L', 'R']) {
+    const e = LIVE.geom.eyes[k], x = e.cx + gx + (k === 'L' ? verge : -verge), y = e.cy + gy;
+    L.drawImage(LIVE.iris[k], x - e.R, y - e.R);
+    if (ps > 1.02) {                                   // a larger pupil drawn over the original one
+      const g = L.createRadialGradient(x, y, e.pr * ps * 0.7, x, y, e.pr * ps * 1.08);
+      g.addColorStop(0, 'rgba(14,8,10,1)'); g.addColorStop(1, 'rgba(14,8,10,0)');
+      L.fillStyle = g; L.beginPath(); L.arc(x, y, e.pr * ps * 1.1, 0, 7); L.fill();
+    }
+    L.drawImage(LIVE.glint[k], x - e.R, y - e.R);
+  }
+  L.globalCompositeOperation = 'source-atop'; L.drawImage(LIVE.shade, 0, 0);
+  L.globalCompositeOperation = 'destination-in'; L.drawImage(LIVE.mask, 0, 0);
+  L.globalCompositeOperation = 'source-over'; L.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(p.lay.c, 0, 0);
+  ctx.restore();
+}
+// the face coming closer: a = 0 (as usual) .. 1 (closest, darker around)
+function drawClose(p, ctx, a) {
+  drawEyes(p, ctx, 1 + (ZOOM_MAX - 1) * a * a * a);
+  const w = p.c.width, h = p.c.height, v = ctx.createRadialGradient(w / 2, h * .45, h * .2, w / 2, h * .45, w * .62);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, `rgba(0,0,0,${0.6 * a})`);
+  ctx.fillStyle = v; ctx.fillRect(0, 0, w, h);
+}
+// glitches stay inside the eyeballs: the effect runs on the whole image, then only the eyes are kept over a clean copy
+function eyesOnly(p, flip, fx) {
+  const w = p.c.width, h = p.c.height;
+  p.lay.x.clearRect(0, 0, w, h); p.lay.x.drawImage(p.c, 0, 0);
+  fx();
+  const g = p.gl.x; g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, w, h); g.drawImage(p.c, 0, 0);
+  g.globalCompositeOperation = 'destination-in'; drawImg(g, IM.eyes, flip); g.globalCompositeOperation = 'source-over';
+  p.ctx.drawImage(p.lay.c, 0, 0); p.ctx.drawImage(p.gl.c, 0, 0);
+}
+function copyToBuf(p) { const b = p.buf.x; b.clearRect(0, 0, b.canvas.width, b.canvas.height); b.drawImage(p.c, 0, 0); }
+
+const FX = {
+  slice(p, k) {
+    const ctx = p.ctx, w = p.c.width, h = p.c.height; copyToBuf(p);
+    const n = 2 + Math.floor(Math.random() * 5 * k);
+    for (let j = 0; j < n; j++) {
+      const y = Math.random() * h, bh = h * (0.02 + Math.random() * 0.12), dx = (Math.random() - .5) * w * 0.3 * k;
+      ctx.drawImage(p.buf.c, 0, y, w, bh, dx, y, w, bh);
+      if (Math.random() < .25) { ctx.fillStyle = `rgba(${Math.random() < .5 ? '230,40,70' : '255,255,255'},.18)`; ctx.fillRect(0, y, w, bh); }
+    }
+  },
+  rgb(p, k) {
+    const ctx = p.ctx, w = p.c.width, h = p.c.height; copyToBuf(p);
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);
+    const off = w * 0.012 * (1 + 2 * k * Math.random());
+    [['#f00', -off], ['#0f0', 0], ['#00f', off]].forEach(([col, dx]) => {
+      const t = p.tmp.x; t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, w, h);
+      t.drawImage(p.buf.c, 0, 0); t.globalCompositeOperation = 'multiply'; t.fillStyle = col; t.fillRect(0, 0, w, h);
+      t.globalCompositeOperation = 'source-over';
+      ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(p.tmp.c, dx, (Math.random() - .5) * 2); ctx.globalCompositeOperation = 'source-over';
+    });
+  },
+  invert(p) { copyToBuf(p); p.ctx.filter = 'invert(1) contrast(1.5)'; p.ctx.drawImage(p.buf.c, 0, 0); p.ctx.filter = 'none'; },
+  pixel(p, k) {
+    const w = p.c.width, h = p.c.height, s = 10 + Math.floor(Math.random() * 18 * k);
+    copyToBuf(p); const t = p.tmp.x; t.clearRect(0, 0, w, h); t.imageSmoothingEnabled = false;
+    t.drawImage(p.buf.c, 0, 0, w / s, h / s);
+    p.ctx.imageSmoothingEnabled = false; p.ctx.drawImage(p.tmp.c, 0, 0, w / s, h / s, 0, 0, w, h); p.ctx.imageSmoothingEnabled = true;
+  },
+  black(p) {
+    const ctx = p.ctx, w = p.c.width, h = p.c.height;
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(0, Math.random() * h, w, Math.max(1, h * 0.006));
+  },
+  scan(p) {
+    const ctx = p.ctx, w = p.c.width, h = p.c.height; ctx.fillStyle = 'rgba(0,0,0,.35)';
+    for (let y = 0; y < h; y += 4) ctx.fillRect(0, y, w, 2);
+  },
+};
+
+// glitch events on eyes during the questions
+const EVENTS = [
+  ['slice', 3, .18, .6], ['rgb', 3, .2, .8], ['stutter', 2, .4, 1.2], ['freeze', 1.5, .8, 2],
+  ['invert', 1, .08, .22], ['pixel', 1.5, .2, .6], ['diverge', .8, 105 / FPS, 105 / FPS],
+  ['roll', 1.4, 4.5, 6], ['rgbslice', 1.5, .25, .7],
+];
+const EV_TOTAL = EVENTS.reduce((s, e) => s + e[1], 0);
+function startEvent(p, now) {
+  let r = Math.random() * EV_TOTAL, e = EVENTS[0];
+  for (const x of EVENTS) { if ((r -= x[1]) <= 0) { e = x; break; } }
+  p.ev = { type: e[0], t0: now, dur: e[2] + Math.random() * (e[3] - e[2]), g: p.g, gy: p.gy, k: S.glitch };
+}
+function drawEvent(p, now) {
+  const ev = p.ev, et = now - ev.t0, ctx = p.ctx, k = Math.max(.5, ev.k);
+  let flip = p.g < 0;
+  switch (ev.type) {
+    case 'diverge': drawImg(ctx, IM.diverge[Math.min(IM.diverge.length - 1, Math.floor(et * FPS))], false); flip = false; break;
+    case 'roll': drawImg(ctx, IM.roll[Math.min(IM.roll.length - 1, 30 + Math.floor(et * FPS * 1.4))], false); flip = false; break;
+    case 'freeze': drawEyes(p, ctx, 1, 1, ev.g, ev.gy); flip = false; eyesOnly(p, flip, () => FX.scan(p)); break;
+    case 'stutter': {
+      if (!ev.next || now > ev.next) { ev.jx = (Math.random() - .5) * 2.2; ev.jy = (Math.random() - .5) * 1.6; ev.next = now + .05 + Math.random() * .09; }
+      drawEyes(p, ctx, 1, 1, ev.jx, ev.jy); break;
+    }
+    default: drawEyes(p, ctx);
+  }
+  const fx = {
+    slice: () => FX.slice(p, k), rgb: () => FX.rgb(p, k), rgbslice: () => { FX.rgb(p, k); FX.slice(p, k); },
+    invert: () => FX.invert(p), pixel: () => FX.pixel(p, k),
+  }[ev.type];
+  if (fx) eyesOnly(p, flip, fx);
+  if ((ev.type === 'diverge' || ev.type === 'roll') && (et < .12 || et > ev.dur - .12)) eyesOnly(p, false, () => FX.slice(p, k));
+}
+
+// ---------- text ----------
+const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+function wrap(ctx, text, maxW) {
+  const words = text.split(' '), lines = []; let line = '';
+  for (const w of words) {
+    const tst = line ? line + ' ' + w : w;
+    if (ctx.measureText(tst).width > maxW && line) { lines.push(line); line = w; } else line = tst;
+  }
+  if (line) lines.push(line); return lines;
+}
+function typed(q, lt) { return q.slice(0, clamp(Math.floor(lt / TYPE), 0, q.length)); }
+const cursorOn = (t) => Math.floor(t * 2.2) % 2 === 0;
+
+// one exchange, typographic: question top-left, answer large in the middle
+function drawTypo(ctx, q, a, lt, tAns, opts = {}) {
+  const w = ctx.canvas.width, h = ctx.canvas.height;
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);
+  const qa = opts.fadeQ ? clamp(1 - (lt - tAns - 0.8) / 1.5, 0.0, 1) : 1;
+  ctx.font = `400 ${h * 0.082}px ${FONT}`; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+  const shown = typed(q, lt), lines = wrap(ctx, q, w * 0.78), shownLines = wrap(ctx, shown, w * 0.78);
+  ctx.fillStyle = `rgba(225,225,228,${0.92 * qa})`;
+  const lh = h * 0.105, y0 = h * 0.16;
+  shownLines.forEach((l, j) => ctx.fillText(l, w * 0.1, y0 + j * lh));
+  if (shown.length < q.length || (lt < tAns && cursorOn(lt))) {
+    const last = shownLines[shownLines.length - 1] || '', j = Math.max(0, shownLines.length - 1);
+    ctx.fillRect(w * 0.1 + ctx.measureText(last).width + h * 0.012, y0 + j * lh + h * 0.008, h * 0.008, h * 0.075);
+  }
+  if (lt >= tAns) {
+    const al = clamp((lt - tAns) / 0.45, 0, 1);
+    const big = opts.big ? 0.25 : 0.19;
+    ctx.font = `500 ${h * big}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = `rgba(255,255,255,${al})`;
+    const yA = opts.big ? h * (0.5 + 0.2 * qa) : h * (0.16 + lines.length * 0.105 + 0.28);
+    ctx.fillText(a, w / 2, Math.min(yA, h * 0.78));
+  }
+}
+
+// ---------- the ChatGPT interface (dark mode, as in the 2024 work) ----------
+// where the conversation is at time t: the question typed in the input, sent, the AI thinking, then streaming
+function gptState(pairs, t, holds, plan = pairPlan) {
+  const msgs = []; let input = '', t0 = 0;
+  for (let i = 0; i < pairs.length; i++) {
+    const [q, a] = pairs[i], P = plan(q, a), lt = t - t0;
+    if (lt < 0) break;
+    if (lt < P.send) { input = typed(q, lt); break; }
+    msgs.push({ who: 'u', text: q });
+    if (lt < P.think) { msgs.push({ who: 'a', thinking: true }); break; }
+    const n = Math.ceil((lt - P.think) / STREAM);
+    msgs.push({ who: 'a', text: a.slice(0, n), streaming: n < a.length });
+    t0 += P.stream + holds[i];
+  }
+  return { input, msgs, t };
+}
+function drawGPT(ctx, st, now) {
+  const w = ctx.canvas.width, h = ctx.canvas.height;
+  ctx.fillStyle = '#212121'; ctx.fillRect(0, 0, w, h);
+  const fs = h * 0.062, lh = fs * 1.38, colL = w * 0.17, colR = w * 0.83, colW = colR - colL;
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  // header
+  ctx.font = `600 ${h * 0.058}px ${FONT}`; ctx.fillStyle = '#ececec'; ctx.fillText('ChatGPT', w * 0.045, h * 0.1);
+  const hw = ctx.measureText('ChatGPT').width;
+  ctx.font = `400 ${h * 0.058}px ${FONT}`; ctx.fillStyle = '#9b9b9b'; ctx.fillText(' 4o ⌄', w * 0.045 + hw, h * 0.1);
+  // input bar
+  const bh = h * 0.13, by = h * 0.8, br = bh / 2;
+  ctx.fillStyle = '#2f2f2f'; ctx.beginPath(); ctx.roundRect(colL, by, colW, bh, br); ctx.fill();
+  ctx.font = `400 ${fs}px ${FONT}`;
+  const tx = colL + br * 0.9, maxT = colW - br * 3.2;
+  if (st.input) {
+    let s = st.input; while (ctx.measureText(s).width > maxT && s.length > 1) s = s.slice(1);   // long questions scroll to the left
+    ctx.fillStyle = '#ececec'; ctx.fillText(s, tx, by + bh / 2);
+    if (cursorOn(now)) ctx.fillRect(tx + ctx.measureText(s).width + fs * 0.08, by + bh / 2 - fs * 0.55, Math.max(1, fs * 0.07), fs * 1.1);
+  } else { ctx.fillStyle = '#8f8f8f'; ctx.fillText('Message ChatGPT', tx, by + bh / 2); }
+  const sx = colR - br, sr = bh * 0.34;
+  ctx.fillStyle = st.input ? '#ececec' : '#676767'; ctx.beginPath(); ctx.arc(sx, by + bh / 2, sr, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#212121'; ctx.lineWidth = Math.max(1, sr * 0.16); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(sx, by + bh / 2 + sr * 0.45); ctx.lineTo(sx, by + bh / 2 - sr * 0.45);
+  ctx.moveTo(sx - sr * 0.38, by + bh / 2 - sr * 0.08); ctx.lineTo(sx, by + bh / 2 - sr * 0.47); ctx.lineTo(sx + sr * 0.38, by + bh / 2 - sr * 0.08); ctx.stroke();
+  // conversation, scrolled so the newest message stays above the input
+  const pad = fs * 0.75, gap = fs * 1.0, logoR = fs * 0.62, aX = colL;
+  const blocks = st.msgs.map(m => {
+    if (m.who === 'u') { const lines = wrap(ctx, m.text, colW * 0.62); return { m, lines, hgt: lines.length * lh + pad * 1.1 }; }
+    const lines = m.thinking ? [''] : wrap(ctx, m.text || ' ', colR - aX); return { m, lines, hgt: Math.max(lines.length * lh, logoR * 2) };
+  });
+  const total = blocks.reduce((s, b) => s + b.hgt + gap, 0), top = h * 0.2, bottom = by - h * 0.05;
+  let y = Math.min(top, bottom - total);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, h * 0.17, w, by - h * 0.17); ctx.clip();
+  for (const b of blocks) {
+    if (b.m.who === 'u') {
+      const tw = Math.max(...b.lines.map(l => ctx.measureText(l).width)), bw = tw + pad * 2, x = colR - bw;
+      ctx.fillStyle = '#2f2f2f'; ctx.beginPath(); ctx.roundRect(x, y, bw, b.hgt, Math.min(fs * 1.1, b.hgt / 2)); ctx.fill();
+      ctx.fillStyle = '#ececec'; b.lines.forEach((l, j) => ctx.fillText(l, x + pad, y + pad * 0.55 + lh * (j + 0.5)));
+    } else {
+      if (b.m.thinking) {
+        const r = fs * 0.32 * (0.75 + 0.25 * Math.sin(now * 6));
+        ctx.fillStyle = '#ececec'; ctx.beginPath(); ctx.arc(aX + fs * 0.35, y + logoR, r, 0, 7); ctx.fill();
+      } else {
+        ctx.fillStyle = '#ececec'; b.lines.forEach((l, j) => ctx.fillText(l, aX, y + logoR + lh * j));
+        if (b.m.streaming) {
+          const last = b.lines[b.lines.length - 1];
+          ctx.beginPath(); ctx.arc(aX + ctx.measureText(last).width + fs * 0.45, y + logoR + lh * (b.lines.length - 1), fs * 0.24, 0, 7); ctx.fill();
+        }
+      }
+    }
+    y += b.hgt + gap;
+  }
+  ctx.restore();
+}
+
+// the question screen: typographic or ChatGPT
+function drawQA(p, q, a, lt, now) {
+  if (S.style === 'gpt') drawGPT(p.ctx, gptState([[q, a]], lt - 0.4, [QA_HOLD]), now);
+  else drawTypo(p.ctx, q, a, lt, q.length * TYPE + 1.3);
+}
+function drawFinal(p, lt, now, fade = 1) {
+  const ctx = p.ctx, w = p.c.width, h = p.c.height;
+  if (S.style === 'gpt') {
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);   // under the eyes and the conversation
+    // each phone, in order on the wall, writes one line of the conversation and keeps it; the phones still waiting
+    // keep their eyes on the visitor. Then the answer window repeats on the next phone, and the next, all around.
+    const { items, done } = finItems();
+    const rank = phones.slice().sort((u, v) => u.x - v.x || u.el.offsetTop - v.el.offsetTop).indexOf(p);
+    const it = items[rank], last = items[items.length - 1];
+    const wave = [6, 0, 1, 2, 3, 4].indexOf(rank);        // after the phone that answered: the 7th, then from the 1st
+    const tw = wave < 0 ? -1 : lt - (done + FIN_WAVE_AT + wave * FIN_WAVE_STEP);
+    const t = it ? lt - it.start : -1;
+    if (tw < 0.25) {
+      if (t < 0.3) drawClose(p, ctx, 1);
+      if (t > 0) {
+        let st;
+        if (it.who === 'u') st = t < 0.3 + it.text.length * TYPE ? { input: typed(it.text, t), msgs: [] } : { input: '', msgs: [{ who: 'u', text: it.text }] };
+        else {
+          const n = Math.ceil((t - 0.8) / STREAM);
+          st = { input: '', msgs: [t < 0.8 ? { who: 'a', thinking: true } : { who: 'a', text: it.text.slice(0, n), streaming: n < it.text.length }] };
+        }
+        ctx.save(); ctx.globalAlpha = clamp(t / 0.3, 0, 1); drawGPT(ctx, st, now); ctx.restore();
+      }
+    }
+    if (tw > 0) {
+      const n = Math.ceil((tw - FIN_THINK) / STREAM);
+      const st = { input: '', msgs: [tw < FIN_THINK ? { who: 'a', thinking: true } : { who: 'a', text: last.text.slice(0, n), streaming: n < last.text.length }] };
+      ctx.save(); ctx.globalAlpha = clamp(tw / 0.25, 0, 1); drawGPT(ctx, st, now); ctx.restore();
+    }
+  } else {
+    let t = lt - 0.8;
+    if (t < 0) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h); return; }
+    for (let i = 0; i < FINAL.length; i++) {
+      const [q, a] = FINAL[i], last = i === FINAL.length - 1;
+      const tq = q.length * TYPE, tAns = tq + 1.1, dur = tAns + (last ? 6.5 : 1.9);
+      if (t < dur || last) { drawTypo(ctx, q, a, t, tAns, { big: last, fadeQ: last }); break; }
+      t -= dur;
+    }
+  }
+  if (fade < 1) { ctx.fillStyle = `rgba(0,0,0,${1 - fade})`; ctx.fillRect(0, 0, w, h); }
+}
+
+// ---------- tracking ----------
+function targetGaze(p) {
+  let ang;
+  if (p.th != null) {          // in the arc each phone faces the middle of the circle
+    const v = visitorArc(), dx = v.x - p.ax, dz = v.z - p.az, c = Math.cos(p.th), s = Math.sin(p.th);
+    ang = Math.atan2(dx * c + dz * s, -dx * s + dz * c);
+  } else ang = Math.atan2(S.vx - p.x, S.dist);
+  return clamp(ang / (38 * Math.PI / 180), -1, 1);
+}
+wall.addEventListener('mousemove', (e) => {
+  if (S.track !== 'mouse' || CAM.drag) return;
+  const r = wall.getBoundingClientRect(), flat = !LAYOUTS[S.layout].arc;
+  // zoomed in on a flat layout, the visitor is where the mouse points on the wall, not on the screen
+  const x = (e.clientX - r.left - (flat ? VIEW.x : 0)) / (flat ? VIEW.z : 1), y = (e.clientY - r.top - (flat ? VIEW.y : 0)) / (flat ? VIEW.z : 1);
+  S.vx = clamp(x / r.width, 0, 1);
+  S.vy = clamp((y / r.height - 0.5) * 2.2, -1, 1);   // higher on the wall = the eyes look up
+});
+// moving inside the arc like in a 3D viewport: drag to look around, scroll or ZQSD / WASD / arrows to walk,
+// E to rise, C to crouch. The eyes keep following the visitor (mouse or webcam).
+const CAM = { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, moved: false, drag: null, keys: new Set() };
+function camHome() { const G = arcGeom(); Object.assign(CAM, { x: G.W / 2, y: G.H * .18, z: G.W * .95, yaw: 0, pitch: 0, moved: false }); }
+// on the flat layouts: zoom toward the mouse and drag the wall
+const VIEW = { z: 1, x: 0, y: 0 };
+function applyFlat() { stage.style.transformOrigin = '0 0'; stage.style.transform = VIEW.z === 1 ? '' : `translate(${VIEW.x}px,${VIEW.y}px) scale(${VIEW.z})`; }
+function zoomFlat(f, mx, my) {
+  const nz = clamp(VIEW.z * f, 1, 8);
+  VIEW.x = mx - (mx - VIEW.x) * nz / VIEW.z; VIEW.y = my - (my - VIEW.y) * nz / VIEW.z; VIEW.z = nz;
+  if (nz === 1) VIEW.x = VIEW.y = 0;
+  applyFlat();
+}
+function applyCam() {
+  if (!LAYOUTS[S.layout].arc) return;
+  const G = arcGeom(), ox = G.W / 2, oy = G.H * .18;      // the eye of the wall's perspective
+  stage.style.transformOrigin = `${ox}px ${oy}px`;
+  stage.style.transform = `translateZ(${G.W * .95}px) rotateX(${CAM.pitch}rad) rotateY(${CAM.yaw}rad) translate3d(${ox - CAM.x}px,${oy - CAM.y}px,${-CAM.z}px)`;
+}
+function moveCam(f, r, u) {
+  const G = arcGeom(), sn = Math.sin(CAM.yaw), cs = Math.cos(CAM.yaw), st = G.floor - G.eye;
+  CAM.x += sn * f + cs * r; CAM.z += -cs * f + sn * r;
+  CAM.y = clamp(CAM.y + u, G.eye - st * .8, G.floor - st * .3);
+  CAM.moved = true;
+}
+const WALK = { KeyW: [1, 0, 0], ArrowUp: [1, 0, 0], KeyS: [-1, 0, 0], ArrowDown: [-1, 0, 0],
+  KeyA: [0, -1, 0], ArrowLeft: [0, -1, 0], KeyD: [0, 1, 0], ArrowRight: [0, 1, 0], KeyE: [0, 0, -1], KeyC: [0, 0, 1] };
+function walk(dt) {
+  if (SOLO || !LAYOUTS[S.layout].arc) return;
+  const G = arcGeom(), sp = G.R * .9 * dt; let f = 0, r = 0, u = 0;
+  CAM.keys.forEach(k => { const m = WALK[k]; if (m) { f += m[0]; r += m[1]; u += m[2]; } });
+  if (f || r || u) moveCam(f * sp, r * sp, u * sp * .6);
+  applyCam();
+}
+wall.addEventListener('mousedown', (e) => {
+  if (!LAYOUTS[S.layout].arc && VIEW.z === 1) return;
+  CAM.drag = { x: e.clientX, y: e.clientY }; wall.classList.add('dragging'); e.preventDefault();
+});
+window.addEventListener('mousemove', (e) => {
+  if (!CAM.drag) return;
+  if (!LAYOUTS[S.layout].arc) {
+    VIEW.x += e.clientX - CAM.drag.x; VIEW.y += e.clientY - CAM.drag.y; applyFlat();
+    CAM.drag = { x: e.clientX, y: e.clientY }; return;
+  }
+  // like Street View: the scene follows the hand
+  CAM.yaw -= (e.clientX - CAM.drag.x) * .004;
+  CAM.pitch = clamp(CAM.pitch + (e.clientY - CAM.drag.y) * .004, -1, 1);
+  CAM.drag = { x: e.clientX, y: e.clientY }; CAM.moved = true;
+});
+window.addEventListener('mouseup', () => { CAM.drag = null; wall.classList.remove('dragging'); });
+wall.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (!LAYOUTS[S.layout].arc) {
+    const r = wall.getBoundingClientRect();
+    zoomFlat(Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .002)), e.clientX - r.left, e.clientY - r.top); return;
+  }
+  const k = arcGeom().R * .0025;
+  moveCam(-e.deltaY * k, e.ctrlKey ? 0 : e.deltaX * k, 0);
+}, { passive: false });
+window.addEventListener('keydown', (e) => { if (WALK[e.code] && LAYOUTS[S.layout].arc) { CAM.keys.add(e.code); e.preventDefault(); } });
+window.addEventListener('keyup', (e) => CAM.keys.delete(e.code));
+window.addEventListener('blur', () => CAM.keys.clear());
+document.getElementById('camhome').onclick = () => { camHome(); applyCam(); if (!LAYOUTS[S.layout].arc) { VIEW.z = 1; VIEW.x = VIEW.y = 0; applyFlat(); } };
+
+let detector = null, camVideo = document.getElementById('cam'), camSel = document.getElementById('camsel');
+async function listCams() {
+  const cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+  const cur = camVideo.srcObject && camVideo.srcObject.getVideoTracks()[0].getSettings().deviceId;
+  camSel.innerHTML = cams.map((d, j) => `<option value="${d.deviceId}" ${d.deviceId === cur ? 'selected' : ''}>${d.label || 'caméra ' + (j + 1)}</option>`).join('');
+  camSel.style.display = cams.length > 1 ? 'block' : 'none';
+}
+camSel.onchange = () => { stopCam(); startCam(camSel.value); };
+async function startCam(deviceId) {
+  const note = document.getElementById('camnote');
+  try {
+    note.textContent = 'ouverture de la caméra…';
+    const video = deviceId ? { deviceId: { exact: deviceId }, width: 640, height: 480 } : { width: 640, height: 480 };
+    const stream = await navigator.mediaDevices.getUserMedia({ video });
+    camVideo.srcObject = stream; await camVideo.play(); camVideo.style.display = 'block';
+    listCams();
+    if (!detector) {
+      note.textContent = 'chargement de la détection de visage…';
+      const V = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+      const { FaceDetector, FilesetResolver } = await import(V + '/vision_bundle.mjs');
+      const fs = await FilesetResolver.forVisionTasks(V + '/wasm');
+      detector = await FaceDetector.createFromOptions(fs, {
+        baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite', delegate: 'GPU' },
+        runningMode: 'VIDEO' });
+    }
+    note.textContent = 'Les yeux suivent ton visage. Rien n\'est enregistré.';
+  } catch (err) {
+    note.textContent = 'Webcam indisponible : ' + err.message; setTrack('mouse');
+  }
+}
+function stopCam() {
+  const s = camVideo.srcObject; if (s) s.getTracks().forEach(t => t.stop());
+  camVideo.srcObject = null; camVideo.style.display = 'none';
+  if (S.track !== 'cam') camSel.style.display = 'none';
+}
+let lastDetect = 0;
+function detect(now) {
+  if (S.track !== 'cam' || !detector || camVideo.readyState < 2 || now - lastDetect < 0.033) return;
+  lastDetect = now;
+  const res = detector.detectForVideo(camVideo, performance.now());
+  const d = res.detections && res.detections[0];
+  if (!d) return;
+  const b = d.boundingBox, vw = camVideo.videoWidth;
+  const cx = (b.originX + b.width / 2) / vw, fw = b.width / vw, fy = (b.originY + b.height / 2) / camVideo.videoHeight;
+  S.vx += (clamp(1 - cx, 0, 1) - S.vx) * 0.5;           // camera faces the visitor: mirror it
+  S.vy += (clamp((fy - 0.45) * 2.4, -1, 1) - S.vy) * 0.4; // higher face in the frame -> the eyes look up
+  S.dist += (clamp(0.11 / Math.max(fw, 0.02), 0.2, 1.6) - S.dist) * 0.3;
+  S.faceSeen = now;
+}
+
+// ---------- main loop ----------
+let last = performance.now() / 1000, clock = 0, looped = false, frames = 0;
+function frame(ms) {
+  const now = ms / 1000, dt = Math.min(0.1, now - last); last = now;
+  if (S.playing) { S.t += dt * S.speed; clock += dt * S.speed; }
+  if (S.t >= TOTAL) { S.t = 0; looped = true; if (!SOLO) QA_PHONES = pickPhones(); buildTimeline(); }
+  detect(now);
+  walk(dt);
+  const seg = segAt(S.t), lt = S.t - seg.start;
+
+  phones.forEach(p => {
+    if (SOLO && p.i !== SOLO_I) return;
+    // eyes always keep tracking, faster and without micro-saccades when they stare
+    const staring = seg.kind === 'stare';
+    const k = staring ? 9 : 3.5;
+    const f = staring ? 1 : 1 - Math.exp(-dt * k);
+    p.g += (targetGaze(p) - p.g) * f;
+    p.gy += (S.vy - p.gy) * f;
+    if (!staring && now > p.microAt) {
+      p.micro = (Math.random() - .5) * 0.08; p.microY = (Math.random() - .5) * 0.12; p.microAt = now + 0.6 + Math.random() * 2.4;
+    }
+    if (staring) { p.micro = 0; p.microY = 0; }
+
+    const ctx = p.ctx;
+    if (seg.kind === 'gaze') {
+      drawEyes(p, ctx, 1, 1);
+      if (lt < 2 && !looped) { ctx.fillStyle = `rgba(0,0,0,${1 - lt / 2})`; ctx.fillRect(0, 0, p.c.width, p.c.height); }
+    } else if (seg.kind === 'qa' && p.i === seg.phone) {
+      // the question screen never glitches: the eyes fade into the conversation and back
+      const [q, a] = QA[seg.i], fade = clamp(Math.min(lt, seg.dur - lt) / EDGE, 0, 1);
+      if (fade < 1) drawEyes(p, ctx);
+      ctx.save(); ctx.globalAlpha = fade; drawQA(p, q, a, Math.min(lt - EDGE, seg.dur - 2 * EDGE), now); ctx.restore();
+      p.ev = null;
+    } else if (seg.kind === 'qa' || seg.kind === 'gaze2') {
+      if (p.ev && clock - p.ev.t0 > p.ev.dur) { p.ev = null; p.nextEv = clock + (1.5 + Math.random() * 7) / Math.max(S.glitch, 0.05); }
+      if (!p.ev && S.glitch > 0 && clock > p.nextEv) startEvent(p, clock);
+      if (p.ev) drawEvent(p, clock); else drawEyes(p, ctx);
+    } else if (seg.kind === 'rollall') {
+      p.ev = null;
+      drawImg(ctx, IM.roll[Math.min(IM.roll.length - 1, Math.floor(lt * FPS * ROLL_SPEED))], false);
+    } else if (seg.kind === 'stare') {
+      p.ev = null;
+      // a stop on all the eyes looking at the visitor, then the face comes closer to the camera, faster and faster
+      drawClose(p, ctx, clamp((lt - STOP) / APPROACH, 0, 1));
+    } else if (seg.kind === 'final') {
+      drawFinal(p, lt, now);
+    } else if (seg.kind === 'fade') {
+      // no black at the end: the conversation melts back into the eyes of part 1, and the loop starts again
+      drawFinal(p, finalDur() + lt, now);
+      drawEyes(p, ctx, 1, clamp(lt / seg.dur, 0, 1));
+    }
+  });
+
+  if (!SOLO && ++frames % 8 === 0) sharpen();
+  updateHud(seg, lt);
+  if (!SOLO) share(now);
+  requestAnimationFrame(frame);
+}
+
+// ---------- several screens ----------
+// the lab leads: it sends its time, the visitor and the phones chosen for the questions; each phone screen follows.
+// Opened from the studio there is no relay, and the lab stops trying.
+const SYNC = { on: true, busy: false, last: 0, seen: false };
+function share(now) {
+  if (!SYNC.on || SYNC.busy || now - SYNC.last < 0.1) return;
+  SYNC.last = now; SYNC.busy = true;
+  const m = { t: S.t, playing: S.playing, speed: S.speed, style: S.style, glitch: S.glitch, qa: QA_PHONES, vx: S.vx, vy: S.vy, dist: S.dist };
+  fetch('sync', { method: 'POST', body: JSON.stringify(m) }).then(r => { if (!r.ok) SYNC.on = false; })
+    .catch(() => { SYNC.on = false; }).finally(() => { SYNC.busy = false; });
+}
+function follow() {
+  const note = document.getElementById('solonote');
+  note.textContent = `téléphone ${SOLO_I + 1} · en attente du lab…`;
+  const es = new EventSource('sync');
+  es.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.style !== S.style || m.qa.join() !== QA_PHONES.join()) { S.style = m.style; QA_PHONES = m.qa; buildTimeline(); }
+    Object.assign(S, { playing: m.playing, speed: m.speed, glitch: m.glitch, vx: m.vx, vy: m.vy, dist: m.dist });
+    // the message is a few hundredths of a second old: catch up gently, jump only when far off (a new phase, the loop)
+    const t = m.playing ? m.t + 0.04 * m.speed : m.t, d = t - S.t;
+    if (!SYNC.seen || Math.abs(d) > 0.3) { S.t = t; phones.forEach(p => p.ev = null); } else S.t += d * 0.2;
+    if (!SYNC.seen) { SYNC.seen = true; looped = true; note.textContent = ''; }
+  };
+  es.onerror = () => { note.textContent = `téléphone ${SOLO_I + 1} · connexion au lab perdue, reconnexion…`; SYNC.seen = false; };
+  // a tap: full screen, turned sideways
+  window.addEventListener('click', () => {
+    if (document.fullscreenElement || !document.documentElement.requestFullscreen) return;
+    document.documentElement.requestFullscreen().then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape')).catch(() => {});
+  });
+}
+
+// ---------- panel ----------
+const PHASES = [[1, 'Le regard', 'les 7 suivent'], [2, 'Les questions', 'écran par écran'], [3, 'Le regard fixe', 'révulsés, puis immobile'], [4, 'La dernière question', 'tous ensemble']];
+const phaseEl = document.getElementById('phases');
+PHASES.forEach(([n, name, hint]) => {
+  const b = document.createElement('button'); b.dataset.phase = n;
+  b.innerHTML = `${n} · ${name}<span>${hint}</span>`;
+  b.onclick = () => jump(n); phaseEl.appendChild(b);
+});
+function jump(n) { const s = SEG.find(x => x.phase === n); if (s) { S.t = s.start; phones.forEach(p => p.ev = null); } }
+const layoutsEl = document.getElementById('layouts');
+Object.keys(LAYOUTS).forEach(name => {
+  const b = document.createElement('button'); b.textContent = name; b.dataset.layout = name;
+  if (name === S.layout) b.classList.add('on');
+  b.onclick = () => { S.layout = name; on(layoutsEl, b); applyLayout(); };
+  layoutsEl.appendChild(b);
+});
+function on(parent, btn) { parent.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === btn)); }
+const playBtn = document.getElementById('play');
+function togglePlay() { S.playing = !S.playing; playBtn.textContent = S.playing ? 'pause' : 'lecture'; playBtn.classList.toggle('on', S.playing); }
+playBtn.onclick = togglePlay;
+document.getElementById('restart').onclick = () => { S.t = 0; QA_PHONES = pickPhones(); buildTimeline(); phones.forEach(p => p.ev = null); };
+document.getElementById('bare').onclick = () => { document.body.classList.toggle('bare'); setTimeout(relayout, 50); };
+document.querySelectorAll('[data-track]').forEach(b => b.onclick = () => setTrack(b.dataset.track));
+function setTrack(t) {
+  S.track = t; document.querySelectorAll('[data-track]').forEach(x => x.classList.toggle('on', x.dataset.track === t));
+  if (t === 'cam') startCam();
+  else { stopCam(); document.getElementById('camnote').textContent = 'Bouge la souris au-dessus du mur : c\'est le visiteur.'; }
+}
+document.querySelectorAll('[data-style]').forEach(b => b.onclick = () => {
+  const keep = S.t - segAt(S.t).start, ph = segAt(S.t);
+  S.style = b.dataset.style; on(b.parentElement, b); buildTimeline();
+  const s = SEG.find(x => x.kind === ph.kind && x.i === ph.i); if (s) S.t = s.start + Math.min(keep, s.dur - .01);
+});
+document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => { S.speed = +b.dataset.speed; on(b.parentElement, b); });
+document.querySelectorAll('[data-wall]').forEach(b => b.onclick = () => { document.body.classList.toggle('dark', b.dataset.wall === 'dark'); on(b.parentElement, b); });
+document.getElementById('glitch').oninput = (e) => { S.glitch = +e.target.value; };
+window.addEventListener('keydown', (e) => {
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+  if (e.key >= '1' && e.key <= '4') jump(+e.key);
+  if (e.key === 'h') document.getElementById('bare').click();
+  if (e.key === 'f') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+});
+const nowEl = document.getElementById('now'), barEl = document.querySelector('#bar div'), visEl = document.getElementById('visitor'), visLab = document.getElementById('visitor-label');
+function updateHud(seg, lt) {
+  phaseEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.phase === seg.phase));
+  let txt = PHASES[seg.phase - 1][1];
+  if (seg.kind === 'qa') txt += ` · question ${seg.i + 1}/5 sur l'écran ${seg.phone + 1}<br><span style="color:#777">${QA[seg.i][0]}</span>`;
+  nowEl.innerHTML = txt;
+  barEl.style.width = (S.t / TOTAL * 100) + '%';
+  visEl.style.left = (S.vx * 100) + '%'; visLab.style.left = (S.vx * 100) + '%';
+  visLab.textContent = `visiteur · ${(S.dist * 4).toFixed(1)} m`;
+  if (LAYOUTS[S.layout].arc) {
+    const G = arcGeom(), v = visitorArc(), d = G.pw * .16;
+    Object.assign(vis3d.style, { left: (G.W / 2) + 'px', top: G.floor + 'px', width: d + 'px', height: d + 'px',
+      transform: `translate3d(${v.x * G.R}px,0,${v.z * G.R}px) rotateX(90deg) translate(-50%,-50%)` });
+  }
+}
+
+// ---------- load ----------
+function loadSeq(dir, n) {
+  return Array.from({ length: n }, (_, i) => {
+    const im = new Image(); im.src = `media/${dir}/${String(i + 1).padStart(3, '0')}.jpg`; return im;
+  });
+}
+(async () => {
+  LIVE.geom = await (await fetch('live/geom.json')).json();
+  const img = (name) => { const im = new Image(); im.src = 'live/' + name; return im; };
+  LIVE.base = img('base.jpg'); LIVE.mask = img('mask.png'); LIVE.shade = img('shade.png');
+  for (const k of ['L', 'R']) { LIVE.iris[k] = img(`iris${k}.png`); LIVE.glint[k] = img(`glint${k}.png`); }
+  IM.diverge = loadSeq('diverge', 105); IM.roll = loadSeq('roll', 233);
+  IM.eyes = new Image(); IM.eyes.src = 'media/eyes_mask.png';
+  const all = [LIVE.base, LIVE.mask, LIVE.shade, ...Object.values(LIVE.iris), ...Object.values(LIVE.glint), ...IM.diverge, ...IM.roll, IM.eyes]; let done = 0;
+  await Promise.all(all.map(im => im.decode().catch(() => {}).then(() => {
+    done++; document.getElementById('lp').textContent = Math.round(done / all.length * 100) + '%';
+  })));
+  document.getElementById('loading').remove();
+  QA_PHONES = pickPhones(); buildTimeline();
+  if (SOLO) { soloLayout(); follow(); } else applyLayout();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

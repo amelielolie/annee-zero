@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Earth Listening Room · Amélie Lolie · Année Zéro</title>
+<link rel="stylesheet" href="../expressions/doc/pages.css">
+<style>
+  /* the simulation takes the whole screen, like the lab itself */
+  html { scroll-snap-type: y proximity; scroll-padding-top: 0; }
+  .cover, .titre, .stage { scroll-snap-align: start; }
+  .stage { position: relative; height: 100vh; min-height: 560px; background: #0a0a0b; }
+  .stage iframe { display: block; width: 100%; height: 100%; border: 0; }
+  /* a small floating bar over the 3D view (left of the lab's panel): the way out of the simulation */
+  .stage .out { position: absolute; left: 14px; bottom: 14px; z-index: 2; display: flex; gap: 4px; padding: 4px; border-radius: 99px;
+    background: rgba(10,10,11,.72); border: 1px solid #2a2a2f; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .stage .out a { color: #ddd; text-decoration: none; font-size: 13px; padding: 7px 14px; border-radius: 99px; }
+  .stage .out a:hover { background: #e9e9ea; color: #111; }
+  .stage .out a span { color: var(--red); }
+  .stage .out a:hover span { color: inherit; }
+  /* the other proposals: two images side by side, wider than the text; a click opens them full screen */
+  .variants { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin: 0 calc(50% - min(50vw, 680px)); }
+  .variants figure { margin: 0; }
+  .variants .zoom { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; border-radius: 8px; overflow: hidden; }
+  .variants img { display: block; width: 100%; height: auto; transition: transform .8s ease; }
+  .variants .zoom:hover img { transform: scale(1.02); }
+  .variants figcaption { padding: 14px 2px 0; }
+  .variants figcaption i { font-style: normal; color: var(--red); font-size: 13px; letter-spacing: .14em; }
+  .variants figcaption h3 { margin: 4px 0 6px; font-weight: 400; font-size: 20px; }
+  .variants figcaption p { color: var(--dim); font-size: 15px; }
+  @media (max-width: 820px) { .variants { grid-template-columns: 1fr; margin: 0; } }
+  #lightbox { position: fixed; inset: 0; z-index: 20; display: none; place-items: center; background: rgba(5,5,6,.94); cursor: zoom-out; }
+  #lightbox.on { display: grid; }
+  #lightbox img { max-width: 94vw; max-height: 92vh; object-fit: contain; }
+  svg text { font: 11px -apple-system, "Helvetica Neue", Arial, sans-serif; fill: #9a9aa0; }
+  svg .lbl { fill: #e9e9ea; font-size: 12px; }
+  svg .red { fill: #f08a98; }
+</style>
+</head>
+<body class="deck">
+<nav id="chapters">
+  <a href="../index.html">← les deux œuvres</a>
+  <a class="brand" href="#oeuvre">Earth Listening Room</a><span class="sep"></span>
+  <a href="#oeuvre" data-chap="oeuvre"><i>01</i> L'œuvre</a>
+  <a href="#simulation" data-chap="simulation"><i>02</i> Simulation</a>
+  <a href="#explication" data-chap="explication"><i>03</i> Explication</a>
+  <a href="#variantes" data-chap="variantes"><i>04</i> Variantes</a>
+  <a href="#technique" data-chap="technique"><i>05</i> Technique</a>
+</nav>
+
+<section id="oeuvre" class="cover">
+  <img src="doc/oeuvre-galerie-courbe.jpg" alt="Une motte de terre avec un écran debout, une coulée de terre qui a emporté écrans et enceintes, des coussins au sol">
+  <a class="cue" href="#titre" aria-label="Défiler vers le titre">↓</a>
+</section>
+
+<section id="titre" class="titre">
+  <div class="titre-in reveal">
+    <div class="kicker">Amélie Lolie · proposition pour Année Zéro · Miradas · MAC Niterói</div>
+    <h1>Earth Listening Room</h1>
+    <p class="meta">Sound lab · une motte et une coulée de terre, 4 écrans, 4 enceintes enterrées, une projection au plafond · en continu</p>
+    <a class="next" href="#simulation">Entrer dans la simulation <span>↓</span></a>
+  </div>
+</section>
+
+<section id="simulation" class="stage">
+  <iframe id="sim" src="index.html?embed" title="Simulation de la salle" allow="autoplay; fullscreen"></iframe>
+  <div class="out"><a href="#titre"><span>↑</span></a><a href="#explication">Lire l'œuvre <span>↓</span></a></div>
+</section>
+
+<main>
+  <section id="explication" class="chapter">
+    <header class="chap"><i>03</i><h2>L'explication</h2></header>
+    <div class="lead">
+    <p><em>Une salle où la terre a tout emporté.</em> Au centre, une motte de terre, un écran planté à son sommet. Depuis le coin, une coulée descend : des écrans tombés, à moitié engloutis, des enceintes couchées dans la terre.</p>
+    <p>Le visiteur entre dans l'œuvre et s'installe sur un coussin, près du sol. Il écoute ce qui monte des enceintes enterrées : la vibration du sol de l'État de Rio, la baie sous l'eau, la forêt atlantique, la nuit. De temps en temps, une voix chante et voyage d'une enceinte à l'autre : celle d'Azerti, l'IA d'Amélie Lolie.</p>
+    <p>Les écrans montrent, en points de lumière, le son qui sort près d'eux. Au plafond, les formes du <em>Corps du jour</em>, une série d'Amélie Lolie et Azerti, se mêlent lentement et ne se répètent jamais.</p>
+    </div>
+
+    <h2>L'intention</h2>
+    <div class="lead">
+    <p><em>Écouter la Terre.</em> L'œuvre est née d'un voyage au Brésil, à Ouro Preto. Non loin de là, en 2015, le village de Bento Rodrigues a été rayé de la carte par une coulée de boue, après la rupture d'un barrage de déchets miniers. C'est cet événement qui a inspiré la coulée de terre de l'installation : nous devons écouter la Terre.</p>
+    <p>Dans certaines traditions brésiliennes, la Terre est sacrée, d'où les voix presque mystiques qu'on entend dans la salle, comme celle d'une divinité. La motte et la coulée ont quelque chose d'originel, d'immémorial : un retour aux sources.</p>
+    <p>Comme si la nature avait repris le dessus : les machines avec lesquelles on regarde et on écoute le monde fonctionnent encore, mais elles sont devenues les voix de la Terre. Earth Listening Room imagine le Symbiocène, un futur possible où nature et technologie ne font plus qu'un, un monde hors du temps.</p>
+    <p>Une seule matière, la terre, une lumière douce, des sons ambiants, presque spirituels : l'œuvre enveloppe le visiteur et l'invite à ralentir, à écouter, à ressentir son appartenance au vivant. Il repart avec le sentiment d'avoir fait corps avec la Terre.</p>
+    <p>L'œuvre rejoint ainsi deux questions d'Année Zéro : l'environnement et les territoires extractifs, la spiritualité et les machines.</p>
+    </div>
+
+    <a class="next" href="#variantes">D'autres propositions <span>↓</span></a>
+  </section>
+
+  <section id="variantes" class="chapter">
+    <header class="chap"><i>04</i><h2>D'autres propositions</h2><p>La même œuvre, avec beaucoup moins de terre. Deux pistes à choisir ensemble, selon la salle et le budget.</p></header>
+    <div class="variants">
+      <figure>
+        <button class="zoom" data-src="doc/variante-petite-coulee-ilots.jpg" aria-label="Agrandir l'image"><img src="doc/variante-petite-coulee-ilots.jpg" alt="Une petite coulée de terre dans le coin avec un écran debout, et trois petits îlots de terre dispersés dans la salle, chacun avec une enceinte ou un écran ; des visiteurs allongés sur des coussins sous la projection du plafond"></button>
+        <figcaption><i>A</i><h3>Petite coulée et îlots</h3><p>Une petite coulée dans le coin, l'écran debout à son sommet. Dans la salle, quelques îlots de terre, chacun avec un seul objet : une enceinte, un écran. Les visiteurs s'installent librement entre eux.</p></figcaption>
+      </figure>
+      <figure>
+        <button class="zoom" data-src="doc/variante-coulee-qui-se-defait.jpg" aria-label="Agrandir l'image"><img src="doc/variante-coulee-qui-se-defait.jpg" alt="Une coulée de terre dans le coin avec des écrans et des enceintes, qui se défait en petits îlots vers l'avant de la salle ; des visiteurs allongés sur des coussins"></button>
+        <figcaption><i>B</i><h3>La coulée qui se défait</h3><p>La coulée part du coin avec les écrans, puis se casse en petits îlots qui avancent dans la salle, comme les derniers morceaux de son passage.</p></figcaption>
+      </figure>
+    </div>
+    <a class="next" href="#technique">Fiche technique <span>↓</span></a>
+  </section>
+
+  <section id="technique" class="chapter">
+    <header class="chap"><i>05</i><h2>La fiche technique</h2><p>Une installation pensée pour se monter simplement, avec ce qu'on trouve à Rio, et sans rien jeter. Les mesures sont à valider sur place avec l'équipe du MAC.</p></header>
+    <h2>En bref</h2>
+  <div class="facts">
+    <div><b>4 écrans</b><span>téléviseurs 50" ordinaires, à louer sur place</span></div>
+    <div><b>4 enceintes</b><span>3 enceintes actives et 1 caisson, louées, couchées dans la terre</span></div>
+    <div><b>1 projecteur</b><span>au plafond, bords fondus, caché</span></div>
+    <div><b>Terre</b><span>une motte ≈ 4 m de large, 1,30 m de haut, et une coulée : palettes et caisses sous une couche de vraie terre (taille à ajuster)</span></div>
+    <div><b>Zéro déchet</b><span>tout se loue ou s'emprunte, la terre est donnée à un jardin après l'exposition</span></div>
+    <div><b>5 coussins</b><span>sombres, posés au sol</span></div>
+    <div><b>En continu</b><span>son en boucle, sans début ni fin</span></div>
+    <div><b>Lumière froide</b><span>blanche et douce, baissée quand la projection tourne</span></div>
+  </div>
+
+  <h2>Implantation</h2>
+    <figure class="plan" style="max-width:640px">
+      <svg id="plan" viewBox="0 0 528 500" aria-label="Plan vu de dessus"></svg>
+      <figcaption>Vu de dessus. La motte au centre, la coulée depuis le coin du fond, les coussins devant ; en pointillé rouge, l'image projetée au plafond.</figcaption>
+    </figure>
+
+  <h2>Comment ça marche</h2>
+  <p style="max-width:720px">Les quatre voix de la nature sont lues en boucle, chacune par sa propre enceinte enterrée : la Terre par le caisson sous la motte, la baie, la forêt et la nuit dans la coulée. La voix d'Azerti passe d'une enceinte à l'autre, parfois dans les quatre à la fois. Tout le son est préparé à l'avance dans un seul fichier à 4 pistes, qu'un mini-PC caché lit en boucle par une carte son à 4 sorties. Le mini-PC envoie aussi au projecteur le mix du <em>Corps du jour</em> ; un cache ovale devant l'objectif fond les bords de l'image. Chaque écran lit seul, sur clé USB, ses visuels calculés à l'avance à partir des sons.</p>
+
+  <h2>Un montage pensé pour être simple</h2>
+  <ul>
+    <li><b>Rien n'est fabriqué, tout se loue ou s'emprunte</b> : les téléviseurs, les enceintes, le projecteur et les coussins en location à Rio.</li>
+    <li><b>La motte et la coulée</b> sont des palettes, des caisses ou des socles du musée, empilés et recouverts d'une bâche, puis d'une couche de vraie terre. Les écrans et les enceintes se posent directement dessus ; l'écran debout tient sur un pied lesté.</li>
+    <li><b>Une seule livraison de terre</b>, sèche et traitée, chez un fournisseur de jardin. Une bâche et une petite bordure protègent le sol.</li>
+    <li><b>Peu d'appareils</b> : des enceintes actives, un mini-PC, des clés USB. Une personne qui connaît le son et la vidéo suffit pour l'installation et les réglages.</li>
+    <li><b>Après l'exposition, rien n'est jeté</b> : le matériel repart chez les loueurs, et la terre est donnée à un jardin de Niterói.</li>
+  </ul>
+
+  <h2>À voir ensemble avec le MAC</h2>
+  <ul>
+    <li><b>La terre et la conservation</b> : ce que le musée accepte près des collections, et le nettoyage pendant l'exposition.</li>
+    <li><b>L'accès</b> : la livraison de la terre et du matériel, le passage jusqu'à la salle.</li>
+    <li><b>La sécurité</b> : la stabilité de la motte et de la coulée, et l'avis de l'assurance.</li>
+    <li><b>Le montage</b> : qui l'installe sur place, en combien de jours, et qui intervient en cas de panne.</li>
+    <li><b>Les téléviseurs</b> : location ou achat d'occasion selon la durée de l'exposition, et l'accord du loueur pour les poser dans la terre.</li>
+    <li><b>La taille</b> de la motte et de la coulée, à ajuster à la salle et au budget.</li>
+  </ul>
+
+  <h2>Matériel</h2>
+  <ul>
+    <li>4 téléviseurs 50" (+ 1 de secours), qui se rallument seuls et relancent la clé USB</li>
+    <li>3 enceintes actives et 1 caisson de basses, noirs, en location</li>
+    <li>1 mini-PC caché, avec une carte son à 4 sorties</li>
+    <li>1 projecteur courte focale et son cache ovale</li>
+    <li>Palettes, caisses ou socles, prêtés ou loués, et 1 pied lesté pour l'écran debout</li>
+    <li>De la terre sèche et traitée, une bâche et une bordure pour le sol</li>
+    <li>5 coussins sombres</li>
+    <li>Prises programmables, pour l'allumage et l'extinction</li>
+  </ul>
+
+  <h2>Pendant l'exposition</h2>
+  <ul>
+    <li>L'œuvre s'allume et s'éteint seule aux heures d'ouverture : des prises programmables coupent et rendent le courant, et chaque appareil redémarre seul (à vérifier sur les téléviseurs loués).</li>
+    <li>L'équipe du musée a très peu à faire : dépoussiérer les écrans et remettre un peu de terre en place de temps en temps.</li>
+  </ul>
+
+  <h2>Données et droits</h2>
+  <ul>
+    <li><b>Les sons</b> sont des enregistrements réels : données sismiques publiques de l'Observatório Nacional (à créditer), enregistrements de Radio Aporee dans le domaine public. Pour l'œuvre finale, idéalement : un hydrophone dans la baie de Guanabara et la forêt du Parque da Cidade de Niterói.</li>
+    <li><b>La voix d'Azerti</b> est une œuvre d'Amélie Lolie avec Azerti. Les conditions d'ElevenLabs pour l'exposition restent à vérifier.</li>
+    <li><b>Le Corps du jour</b> est une série d'Amélie Lolie et Azerti.</li>
+  </ul>
+
+    <a class="next" href="#oeuvre">Revenir au début <span>↑</span></a>
+  </section>
+</main>
+
+<div id="lightbox" role="dialog" aria-label="Image agrandie"><img alt=""></div>
+<script>
+// ---------- the other proposals open full screen; a click or Escape closes ----------
+const lb = document.getElementById('lightbox'), lbImg = lb.querySelector('img');
+document.querySelectorAll('.zoom').forEach(b => b.onclick = () => { lbImg.src = b.dataset.src; lbImg.alt = b.querySelector('img').alt; lb.classList.add('on'); });
+lb.onclick = () => lb.classList.remove('on');
+addEventListener('keydown', (e) => { if (e.key === 'Escape') lb.classList.remove('on'); });
+// ---------- the plan, drawn from the lab's own room: 1 m = 40 px ----------
+const NS = 'http://www.w3.org/2000/svg', el = (tag, a, parent) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); parent.appendChild(e); return e; };
+const svg = document.getElementById('plan');
+const S = 40, X = (x) => (x + 6.6) * S, Y = (z) => (z + 5.2) * S;
+const R = 10, CZ = 5.2, TH = 0.66, XW = R * Math.sin(TH), ZEND = CZ - R * Math.cos(TH), ZFRONT = 6.5;
+const M = { x: -0.6, z: 0.3 }, A = { x: XW - 1.1, z: ZEND + 0.2 }, B = { x: 1.0, z: -0.4 };
+// walls: two sides, the curved back, the front with the public
+let d = `M${X(-XW)} ${Y(ZFRONT)} L${X(-XW)} ${Y(ZEND)} A${R * S} ${R * S} 0 0 1 ${X(XW)} ${Y(ZEND)} L${X(XW)} ${Y(ZFRONT)}`;
+el('path', { d, fill: 'rgba(255,255,255,.02)', stroke: '#55555c', 'stroke-width': 2 }, svg);
+el('line', { x1: X(-XW), y1: Y(ZFRONT), x2: X(XW), y2: Y(ZFRONT), stroke: '#55555c', 'stroke-dasharray': '4 5' }, svg);
+// the flow: from the back right corner to the foot of the mound, narrowing
+const ab = { x: B.x - A.x, z: B.z - A.z }, L = Math.hypot(ab.x, ab.z), u = { x: ab.x / L, z: ab.z / L }, n = { x: -u.z, z: u.x };
+const left = [], right = [];
+for (let i = 0; i <= 20; i++) { const t = i / 20, half = (1.9 - 0.8 * t + 0.35 * Math.sin(t * 5.3)) * .8, p = { x: A.x + ab.x * t, z: A.z + ab.z * t };
+  left.push(`${X(p.x + n.x * half)} ${Y(p.z + n.z * half)}`); right.unshift(`${X(p.x - n.x * half)} ${Y(p.z - n.z * half)}`); }
+el('path', { d: 'M' + left.concat(right).join(' L') + ' Z', fill: '#2a1f17', stroke: '#4a382a' }, svg);
+// the mound
+const g = el('radialGradient', { id: 'mg' }, el('defs', {}, svg));
+el('stop', { offset: '0', 'stop-color': '#5a4130' }, g); el('stop', { offset: '1', 'stop-color': '#2a1f17' }, g);
+el('circle', { cx: X(M.x), cy: Y(M.z), r: 2.2 * S, fill: 'url(#mg)', stroke: '#4a382a' }, svg);
+// screens (50": 1.11 x 0.07 m seen from above) and speakers, at their places in the lab
+const onFlow = (t, off) => ({ x: A.x + ab.x * t + n.x * off, z: A.z + ab.z * t + n.z * off });
+const tvAt = (p, rot) => { const r = el('rect', { x: -22, y: -4, width: 44, height: 8, fill: '#050506', stroke: '#9a9aa0', transform: `translate(${X(p.x)} ${Y(p.z)}) rotate(${rot})` }, svg); };
+tvAt({ x: M.x + .15, z: M.z + .05 }, -10);
+[[0.22, 0.35, 60], [0.48, -0.55, -20], [0.72, 0.45, 50]].forEach(([t, off, rot]) => tvAt(onFlow(t, off), rot));
+const spkAt = (p, s, rot) => el('rect', { x: -s / 2, y: -s / 2, width: s, height: s * .8, fill: '#c43c4e', transform: `translate(${X(p.x)} ${Y(p.z)}) rotate(${rot})` }, svg);
+[[0.12, -0.6, 30], [0.4, 0.95, -40], [0.63, -0.25, 20]].forEach(([t, off, rot]) => spkAt(onFlow(t, off), 13, rot));
+spkAt({ x: M.x + 1.55, z: M.z + 1.2 }, 18, -40);
+// cushions
+[[-3.1, 1.9, .6], [-1.2, 2.9, .1], [1.0, 2.8, -.25], [2.8, 1.6, -.6], [-3.6, 0.0, 1.1]]
+  .forEach(([x, z, r]) => el('rect', { x: -16, y: -16, width: 32, height: 32, rx: 9, fill: '#3b3934', stroke: '#5c5a54', transform: `translate(${X(x)} ${Y(z)}) rotate(${r * 57.3})` }, svg));
+// the image on the ceiling (one projector, feathered): 5.6 x 4.2 m
+el('ellipse', { cx: X(-0.4), cy: Y(1.4), rx: 2.8 * S, ry: 2.1 * S, fill: 'none', stroke: 'rgba(196,60,78,.6)', 'stroke-dasharray': '5 5' }, svg);
+// labels
+const txt = (x, y, s, cls, anchor) => { const t = el('text', { x, y, 'text-anchor': anchor || 'start' }, svg); if (cls) t.setAttribute('class', cls); t.textContent = s; };
+txt(X(M.x), Y(M.z) - 2.2 * S - 8, 'motte et écran debout', 'lbl', 'middle');
+txt(X(3.4), Y(0.5), 'coulée', 'lbl');
+txt(X(-0.4), Y(1.4) + 2.1 * S + 16, 'projection au plafond', 'red', 'middle');
+txt(X(-3.1), Y(1.9) + 34, 'coussins', null, 'middle');
+txt(X(M.x + 1.55) + 14, Y(M.z + 1.2) + 4, 'caisson');
+txt(X(0), Y(ZFRONT) + 22, 'public', null, 'middle');
+el('line', { x1: X(0), y1: Y(ZFRONT) + 10, x2: X(0), y2: Y(ZFRONT) - 22, stroke: '#77777d' }, svg);
+// legend and scale
+el('rect', { x: 16, y: 20, width: 22, height: 6, fill: '#050506', stroke: '#9a9aa0' }, svg); txt(46, 27, 'écran');
+el('rect', { x: 22, y: 36, width: 10, height: 8, fill: '#c43c4e' }, svg); txt(46, 44, 'enceinte');
+txt(16, 484, '1 m'); el('line', { x1: 16, y1: 490, x2: 16 + S, y2: 490, stroke: '#77777d' }, svg);
+
+// ---------- the chapter you are reading lights up in the bar ----------
+const links = document.querySelectorAll('#chapters [data-chap]');
+const seen = new IntersectionObserver((entries) => entries.forEach(e => {
+  if (e.isIntersecting) links.forEach(a => a.classList.toggle('on', a.dataset.chap === e.target.id));
+}), { rootMargin: '-45% 0px -50% 0px' });
+document.querySelectorAll('#oeuvre, #simulation, .chapter').forEach(s => seen.observe(s));
+// the bar hides on the image and while the simulation fills the screen
+const cover = document.getElementById('oeuvre'), stage = document.getElementById('simulation');
+const navGate = () => { const r = stage.getBoundingClientRect();
+  document.body.classList.toggle('navhide', scrollY < cover.offsetHeight * .6 || (r.top < 60 && r.bottom > innerHeight - 60)); };
+addEventListener('scroll', navGate, { passive: true }); addEventListener('resize', navGate); navGate();
+// the title rises in when it comes into view
+const rise = new IntersectionObserver((entries) => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); }), { threshold: .35 });
+document.querySelectorAll('.reveal').forEach(r => rise.observe(r));
+</script>
+</body>
+</html>
