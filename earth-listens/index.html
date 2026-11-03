@@ -55,6 +55,19 @@
   #soundbtn.playing b { font-size: 12px; font-weight: 500; }
   #soundbtn.playing small { display: none; }
   #loading { position: absolute; inset: 0; display: grid; place-items: center; background: #0a0a0b; z-index: 9; color: #888; }
+  /* phones: the room takes the whole screen, the panel slides up from the bottom behind a button */
+  #panelbtn { display: none; }
+  @media (max-width: 700px) {
+    #room { right: 0; }
+    #panel { top: auto; left: 0; width: auto; height: 62%; border-left: 0; border-top: 1px solid #2a2a2e; border-radius: 14px 14px 0 0;
+      z-index: 11; padding-bottom: 80px; transform: translateY(100%); transition: transform .35s ease; }
+    body.panelopen #panel { transform: none; }
+    #panelbtn { display: block; position: absolute; z-index: 12; top: 12px; right: 12px; padding: 7px 14px; border-radius: 99px;
+      background: rgba(17,17,19,.78); border: 1px solid #333; color: #e9e9ea; backdrop-filter: blur(6px); }
+    body.bare #panelbtn { display: none; }
+    #room { touch-action: none; }                 /* a finger looks around the room, as the mouse does */
+    #soundbtn { left: 50%; bottom: 78px; }        /* above the presentation's way out */
+  }
 </style>
 <script type="importmap">{ "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/jsm/" } }</script>
 </head>
@@ -115,6 +128,9 @@
     <div class="row"><button id="bare">plein écran</button></div>
   </div>
 </aside>
+<button id="panelbtn" aria-expanded="false">réglages</button>
+<script>{ const b = document.getElementById('panelbtn');
+  b.onclick = () => { const o = document.body.classList.toggle('panelopen'); b.textContent = o ? 'fermer' : 'réglages'; b.setAttribute('aria-expanded', o); }; }</script>
 
 <script type="module">
 import * as THREE from 'three';

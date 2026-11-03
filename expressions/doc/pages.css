@@ -96,3 +96,12 @@ a.next:hover { border-color: #fff; }
 
 /* the texts of the presentations, justified */
 main p, main li { text-align: justify; }
+
+/* phones: the bar keeps the way back and the chapter numbers */
+@media (max-width: 700px) {
+  #chapters .brand, #chapters .sep { display: none; }
+  #chapters { justify-content: space-between; }
+  #chapters a { font-size: 0; padding: 7px 11px; }
+  #chapters a i { font-size: 13px; margin: 0; }
+  #chapters a:first-child::before { content: "←"; font-size: 16px; }
+}

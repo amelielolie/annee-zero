@@ -88,6 +88,17 @@
   #tabs a:hover { color: #fff; }
   #tabs a.on { background: #e9e9ea; color: #111; }
   body.solo #tabs, body.embed #tabs { display: none; }
+  /* phones: the room takes the whole screen, the panel slides up from the bottom behind a button */
+  #panelbtn { display: none; }
+  @media (max-width: 700px) {
+    #room { right: 0; }
+    #panel { top: auto; left: 0; width: auto; height: 62%; border-left: 0; border-top: 1px solid #2a2a2e; border-radius: 14px 14px 0 0;
+      z-index: 11; padding-bottom: 80px; transform: translateY(100%); transition: transform .35s ease; }
+    body.panelopen #panel { transform: none; }
+    #panelbtn { display: block; position: absolute; z-index: 12; top: 12px; right: 12px; padding: 7px 14px; border-radius: 99px;
+      background: rgba(17,17,19,.78); border: 1px solid #333; color: #e9e9ea; backdrop-filter: blur(6px); }
+    body.bare #panelbtn { display: none; }
+  }
 </style>
 </head>
 <body class="dark">
@@ -158,6 +169,9 @@
 
   <div class="keys">espace : pause · 1-4 : phases · h : plein mur · f : plein écran</div>
 </aside>
+<button id="panelbtn" aria-expanded="false">réglages</button>
+<script>{ const b = document.getElementById('panelbtn');
+  b.onclick = () => { const o = document.body.classList.toggle('panelopen'); b.textContent = o ? 'fermer' : 'réglages'; b.setAttribute('aria-expanded', o); }; }</script>
 
 <script>
 // ---------- content ----------
@@ -755,11 +769,11 @@ async function startCam(deviceId) {
     listCams();
     if (!detector) {
       note.textContent = 'chargement de la détection de visage…';
-      const V = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+      const V = new URL('lib/mediapipe', location.href).href;   // MediaPipe tasks-vision 0.10.14, kept here so the work runs without internet
       const { FaceDetector, FilesetResolver } = await import(V + '/vision_bundle.mjs');
       const fs = await FilesetResolver.forVisionTasks(V + '/wasm');
       detector = await FaceDetector.createFromOptions(fs, {
-        baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite', delegate: 'GPU' },
+        baseOptions: { modelAssetPath: V + '/blaze_face_short_range.tflite', delegate: 'GPU' },
         runningMode: 'VIDEO' });
     }
     note.textContent = 'Les yeux suivent ton visage. Rien n\'est enregistré.';
