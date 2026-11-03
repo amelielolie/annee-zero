@@ -61,7 +61,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 52px; }
 #chapters .brand { color: #fff; font-size: 13px; font-weight: 500; letter-spacing: .01em; }
 #chapters a i { font-style: normal; color: #666; margin-right: 4px; }
 #chapters a.on i { color: var(--red); }
-.cover { position: relative; height: 100vh; min-height: 560px; overflow: hidden; }
+.cover { position: relative; height: 100vh; height: 100svh; min-height: 480px; overflow: hidden; }
 .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 /* the image alone, nothing written on it; a small arrow invites to scroll */
 .cover .cue { position: absolute; z-index: 1; left: 50%; bottom: 22px; transform: translateX(-50%); width: 40px; height: 40px; display: grid; place-items: center;
@@ -72,7 +72,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 52px; }
 #chapters { transition: opacity .4s ease, transform .4s ease; }
 body.navhide #chapters { opacity: 0; transform: translateY(-100%); pointer-events: none; }
 /* the title, on its own screen after the image */
-.titre { min-height: 100vh; display: flex; align-items: center; }
+.titre { min-height: 100vh; min-height: 100svh; display: flex; align-items: center; }
 .titre-in { width: 100%; max-width: 980px; margin: 0 auto; padding: 0 24px; }
 .titre .kicker { margin-top: 0; }
 .titre h1 { font-size: clamp(44px, 8vw, 96px); }
@@ -90,7 +90,7 @@ a.next:hover { border-color: #fff; }
   margin: 0 0 12px; padding: 0; border: 0; }
 .chap p { color: var(--dim); max-width: 640px; }
 .sim { margin: 0 calc(50% - 50vw); }
-.sim iframe { display: block; width: 100%; height: calc(100vh - 47px); min-height: 600px; border: 0; background: #0a0a0b; }
+.sim iframe { display: block; width: 100%; height: calc(100vh - 47px); height: calc(100svh - 47px); min-height: 480px; border: 0; background: #0a0a0b; }
 .row { display: flex; flex-wrap: wrap; gap: 6px; }
 .hint { margin-top: 12px; }
 

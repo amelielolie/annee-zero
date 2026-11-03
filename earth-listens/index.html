@@ -65,7 +65,7 @@
     #panelbtn { display: block; position: absolute; z-index: 12; top: 12px; right: 12px; padding: 7px 14px; border-radius: 99px;
       background: rgba(17,17,19,.78); border: 1px solid #333; color: #e9e9ea; backdrop-filter: blur(6px); }
     body.bare #panelbtn { display: none; }
-    #room { touch-action: none; }                 /* a finger looks around the room, as the mouse does */
+    #room { touch-action: pan-y; }                /* a finger slides sideways to look around, up and down still scrolls the page */
     #soundbtn { left: 50%; bottom: 78px; }        /* above the presentation's way out */
   }
 </style>
@@ -88,7 +88,7 @@
 
   <div class="group">
     <div class="label">Se déplacer dans l'œuvre</div>
-    <div class="keys">glisser : regarder autour · molette : avancer / reculer<br>Z Q S D ou flèches : marcher · E : monter · C : s'accroupir</div>
+    <div class="keys">glisser : regarder autour · molette : avancer / reculer<br>Z Q S D ou flèches : marcher · E : monter · C : s'accroupir<br>au doigt : glisser de côté pour regarder · pincer pour avancer / reculer</div>
   </div>
 
   <div class="group">
@@ -128,9 +128,9 @@
     <div class="row"><button id="bare">plein écran</button></div>
   </div>
 </aside>
-<button id="panelbtn" aria-expanded="false">réglages</button>
+<button id="panelbtn" aria-expanded="false">Explorer la salle</button>
 <script>{ const b = document.getElementById('panelbtn');
-  b.onclick = () => { const o = document.body.classList.toggle('panelopen'); b.textContent = o ? 'fermer' : 'réglages'; b.setAttribute('aria-expanded', o); }; }</script>
+  b.onclick = () => { const o = document.body.classList.toggle('panelopen'); b.textContent = o ? 'fermer' : 'Explorer la salle'; b.setAttribute('aria-expanded', o); }; }</script>
 
 <script type="module">
 import * as THREE from 'three';
@@ -485,7 +485,7 @@ function mixLoad(slot, avoid) {          // a new piece (never the one on screen
   const S = mixSlots[slot]; S.piece = piece; S.rot = Math.floor(Math.random() * 4) * Math.PI / 2; S.flip = Math.random() < .5 ? -1 : 1;
   S.z0 = rr(1.0, 1.12); S.z1 = rr(1.0, 1.18);
   MIX.pending = true; S.ready = false;
-  S.v.src = 'visuels/corps/mix/' + piece + '-' + (1 + Math.floor(Math.random() * 3)) + '.mp4';
+  S.v.src = 'visuels/corps/mix/' + piece + '-' + (1 + Math.floor(Math.random() * 3)) + '.mp4'; S.v.load();
   S.v.onloadedmetadata = () => { S.v.currentTime = rr(0, Math.max(0, S.v.duration - 46)); };
   S.v.onseeked = () => { S.cs = S.v.currentTime; S.ready = true; MIX.pending = false; S.v.onseeked = null; };
   S.v.defaultPlaybackRate = S.v.playbackRate = rr(.85, 1.0);
@@ -508,6 +508,13 @@ function mixUpdate(t) {
   mixMat.uniforms.trA.value = mixTr(a, life(a)); mixMat.uniforms.trB.value = mixTr(b, life(b));
   const prev = renderer.getRenderTarget(); renderer.setRenderTarget(mixRT); renderer.render(mixScene, mixCam); renderer.setRenderTarget(prev);
 }
+// iPhone (low power mode especially) only lets a video load and play after a touch: the first touch wakes the ceiling
+function wakeVideos() {
+  mixSlots.forEach(S => { const A = mixSlots[MIX.cur], keep = MIX.phase === 'morph' || (MIX.phase === 'hold' && S === A);
+    S.v.play().then(() => { if (!keep) S.v.pause(); }).catch(() => {}); });
+  Object.values(CEIL_VIDEOS).forEach(cv => cv.v.play().catch(() => {}));
+}
+addEventListener('pointerdown', wakeVideos, { once: true, capture: true });
 function mixPause() { if (MIX.started) mixSlots.forEach(S => S.v.pause()); }
 function drawCeil(t) {
   if (ceilMode === 'mix') { Object.values(CEIL_VIDEOS).forEach(cv => cv.v.pause()); mixUpdate(t); if (ceilProj.material.map !== mixRT.texture) { ceilProj.material.map = mixRT.texture; ceilProj.material.needsUpdate = true; } ceilProj.visible = true; return; }
@@ -648,9 +655,17 @@ function applyCam() {
   camera.rotation.order = 'YXZ'; camera.rotation.set(CAM.pitch, CAM.yaw, 0);
 }
 let drag = null;
-roomEl.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY }; roomEl.classList.add('dragging'); roomEl.setPointerCapture(e.pointerId); });
-roomEl.addEventListener('pointermove', (e) => { if (!drag) return; CAM.yaw -= (e.clientX - drag.x) * 0.0042; CAM.pitch = Math.max(-1.3, Math.min(1.2, CAM.pitch - (e.clientY - drag.y) * 0.0036)); drag = { x: e.clientX, y: e.clientY }; });
-roomEl.addEventListener('pointerup', () => { drag = null; roomEl.classList.remove('dragging'); });
+// a finger looks around like the mouse (up and down scrolls the page on a phone); two fingers pinch to walk
+const PTS = new Map(); let pinch = 0;
+const pdist = () => { const [a, b] = [...PTS.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+roomEl.addEventListener('pointerdown', (e) => { PTS.set(e.pointerId, { x: e.clientX, y: e.clientY }); roomEl.setPointerCapture(e.pointerId);
+  if (PTS.size === 2) { drag = null; pinch = pdist(); } else { drag = { x: e.clientX, y: e.clientY }; roomEl.classList.add('dragging'); } });
+roomEl.addEventListener('pointermove', (e) => { if (!PTS.has(e.pointerId)) return; PTS.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (PTS.size === 2) { const d = pdist(); step((d - pinch) * 0.01, 0); pinch = d; return; }
+  if (!drag) return; CAM.yaw -= (e.clientX - drag.x) * 0.0042; CAM.pitch = Math.max(-1.3, Math.min(1.2, CAM.pitch - (e.clientY - drag.y) * 0.0036)); drag = { x: e.clientX, y: e.clientY }; });
+const lift = (e) => { PTS.delete(e.pointerId);
+  if (PTS.size === 1) { const p = [...PTS.values()][0]; drag = { x: p.x, y: p.y }; } else { drag = null; roomEl.classList.remove('dragging'); } };
+roomEl.addEventListener('pointerup', lift); roomEl.addEventListener('pointercancel', lift);
 roomEl.addEventListener('wheel', (e) => { e.preventDefault(); step(-Math.sign(e.deltaY) * 0.35, 0); }, { passive: false });
 const WALK = { KeyW: 1, KeyZ: 1, ArrowUp: 1, KeyS: 1, ArrowDown: 1, KeyA: 1, KeyQ: 1, ArrowLeft: 1, KeyD: 1, ArrowRight: 1, KeyE: 1, KeyC: 1 };
 addEventListener('keydown', (e) => { if (WALK[e.code]) { CAM.keys.add(e.code); e.preventDefault(); } });
