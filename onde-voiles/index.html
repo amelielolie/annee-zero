@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where the Wave Decides · lab</title>
+<style>
+  :root { --panel: 300px; --ink: #e9e9ea; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0a0a0b; color: var(--ink);
+    font: 13px/1.4 -apple-system, "Helvetica Neue", Arial, sans-serif; overflow: hidden; }
+  #room { position: absolute; inset: 0 var(--panel) 0 0; cursor: grab; }
+  #room.dragging { cursor: grabbing; }
+  body.bare #room { right: 0; }
+  body.bare #panel { display: none; }
+  #room canvas { display: block; width: 100%; height: 100%; }
+  #panel { position: absolute; top: 0; right: 0; bottom: 0; width: var(--panel); background: #111113;
+    border-left: 1px solid #222; padding: 18px 18px 24px; overflow-y: auto; }
+  h1 { font-size: 13px; font-weight: 600; margin: 0 0 2px; letter-spacing: .02em; }
+  .sub { color: #888; margin-bottom: 18px; }
+  .group { margin: 0 0 18px; }
+  .label { color: #8a8a8f; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { background: #1d1d20; color: var(--ink); border: 1px solid #2c2c31; border-radius: 6px; padding: 6px 10px;
+    font: inherit; cursor: pointer; }
+  button:hover { border-color: #46464d; }
+  button.on { background: #e9e9ea; color: #111; border-color: #e9e9ea; }
+  input[type=range] { width: 100%; accent-color: #8a9ef0; }
+  .keys { color: #999; font-size: 11px; line-height: 1.7; }
+  .note { color: #777; font-size: 11px; line-height: 1.6; }
+  #tabs { position: absolute; top: 12px; left: 12px; z-index: 10; display: flex; gap: 4px; padding: 4px;
+    background: rgba(10,10,11,.72); border: 1px solid #26262a; border-radius: 9px; backdrop-filter: blur(6px); }
+  #tabs a { color: #aaa; text-decoration: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; }
+  #tabs a:hover { color: #fff; }
+  #tabs a.on { background: #e9e9ea; color: #111; }
+  body.embed #tabs, body.tour #tabs, body.tour #panelbtn { display: none; }
+  #loading { position: absolute; inset: 0; display: grid; place-items: center; background: #0a0a0b; z-index: 9; color: #888; }
+  #panelbtn { display: none; }
+  @media (max-width: 700px) {
+    #room { right: 0; }
+    #panel { top: auto; left: 0; width: auto; height: 62%; border-left: 0; border-top: 1px solid #2a2a2e; border-radius: 14px 14px 0 0;
+      z-index: 11; padding-bottom: 80px; transform: translateY(100%); transition: transform .35s ease; }
+    body.panelopen #panel { transform: none; }
+    #panelbtn { display: block; position: absolute; z-index: 12; top: 12px; right: 12px; padding: 7px 14px; border-radius: 99px;
+      background: rgba(17,17,19,.78); border: 1px solid #333; color: #e9e9ea; backdrop-filter: blur(6px); }
+    body.bare #panelbtn { display: none; }
+    #room { touch-action: pan-y; }
+  }
+</style>
+<script type="importmap">{ "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/jsm/" } }</script>
+</head>
+<body>
+<script>{ const q = new URLSearchParams(location.search);
+  if (q.has('embed')) document.body.classList.add('embed');
+  if (q.has('tour')) document.body.classList.add('tour', 'bare'); }</script>
+<nav id="tabs"><a href="../expressions/index.html">Expressions of Basic Humanity</a><a href="../earth-listens/index.html">Earth Listening Room</a><a class="on" href="./index.html">Where the Wave Decides</a></nav>
+<div id="loading">chargement de la salle…</div>
+<div id="room"></div>
+
+<aside id="panel">
+  <h1>Where the Wave Decides</h1>
+  <div class="sub">Amelie Lolie x Azerti · MAC Niterói</div>
+
+  <div class="group">
+    <div class="note">Des voiles suspendus les uns derrière les autres, un seul projecteur. L'onde de « Là où l'onde décide » traverse toutes les couches : elle se dépose sur chaque voile et devient un volume qui flotte dans la salle.</div>
+  </div>
+
+  <div class="group">
+    <div class="label">Se déplacer dans l'œuvre</div>
+    <div class="keys">glisser : regarder autour · molette : avancer / reculer<br>Z Q S D ou flèches : marcher · E : monter · C : s'accroupir<br>au doigt : glisser de côté pour regarder · pincer pour avancer / reculer</div>
+  </div>
+
+  <div class="group">
+    <div class="label">Vues</div>
+    <div class="row" id="views"></div>
+  </div>
+
+  <div class="group">
+    <div class="label">Regarder l'onde</div>
+    <div class="row"><button id="collapse">l'onde s'effondre</button></div>
+    <div class="note" style="margin-top:6px">Comme dans le corps du jour : tant que personne ne regarde, l'onde est partout à la fois. Quand on la regarde, elle tombe en un seul point, qui flotte entre les voiles, puis elle se répand de nouveau. Clic sur les voiles : même effet. Dans la salle, une webcam déclencherait l'effondrement quand un visiteur s'approche (proposition).</div>
+  </div>
+
+  <div class="group">
+    <div class="label">Nombre de voiles</div>
+    <div class="row" id="counts"></div>
+    <div class="label" style="margin-top:10px">Écart entre les voiles · <span id="gapv">38 cm</span></div>
+    <input id="gap" type="range" min="0.15" max="0.7" step="0.01" value="0.38">
+    <div class="note" style="margin-top:6px">Un seul voile : une image plate. À partir de trois, l'onde prend de la profondeur. Plus l'écart est grand, plus le volume est profond et plus chaque couche est pâle.</div>
+  </div>
+
+  <div class="group">
+    <div class="label">Lumière de la salle</div>
+    <input id="light" type="range" min="0" max="1.5" step="0.01" value="0.35">
+  </div>
+
+  <div class="group">
+    <div class="row"><button id="bare">plein écran</button></div>
+  </div>
+</aside>
+<button id="panelbtn" aria-expanded="false">Explorer la salle</button>
+<script>{ const b = document.getElementById('panelbtn');
+  b.onclick = () => { const o = document.body.classList.toggle('panelopen'); b.textContent = o ? 'fermer' : 'Explorer la salle'; b.setAttribute('aria-expanded', o); }; }</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const QS = new URLSearchParams(location.search);
+const TOUR = QS.has('tour');
+
+// ---------- renderer, scene ----------
+const roomEl = document.getElementById('room');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: TOUR });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+roomEl.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050506);
+const camera = new THREE.PerspectiveCamera(58, 1, 0.05, 60);
+
+// ---------- the room: a small black box, concrete floor ----------
+const XW = 3.2, ZB = -4.2, ZF = 4.4, H = 3.6;
+function hash(x, z) { const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return s - Math.floor(s); }
+function concrete() {
+  const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d');
+  const img = g.createImageData(512, 512);
+  for (let y = 0; y < 512; y++) for (let x = 0; x < 512; x++) {
+    let v = 0, a = 1, f = 1 / 64;
+    for (let o = 0; o < 5; o++) { const xx = x * f, yy = y * f, xi = Math.floor(xx), yi = Math.floor(yy), xf = xx - xi, yf = yy - yi;
+      const p = 512 * f, h = (i, j) => hash(((i % p) + p) % p, ((j % p) + p) % p);
+      const u = xf * xf * (3 - 2 * xf), w = yf * yf * (3 - 2 * yf);
+      v += a * (h(xi, yi) * (1 - u) * (1 - w) + h(xi + 1, yi) * u * (1 - w) + h(xi, yi + 1) * (1 - u) * w + h(xi + 1, yi + 1) * u * w); a *= .5; f *= 2; }
+    const k = 70 + v * 38 + (hash(x, y) - .5) * 10, i = (y * 512 + x) * 4;
+    img.data[i] = k; img.data[i + 1] = k; img.data[i + 2] = k * 1.02; img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 4); t.anisotropy = 8; return t;
+}
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(2 * XW, ZF - ZB), new THREE.MeshStandardMaterial({ map: concrete(), roughness: .62, metalness: 0 }));
+floor.rotation.x = -Math.PI / 2; floor.position.z = (ZF + ZB) / 2; scene.add(floor);
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: .96 });
+function wall(w, h, x, y, z, ry) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wallMat); m.position.set(x, y, z); m.rotation.y = ry; scene.add(m); return m; }
+wall(2 * XW, H, 0, H / 2, ZB, 0); wall(2 * XW, H, 0, H / 2, ZF, Math.PI);
+wall(ZF - ZB, H, -XW, H / 2, (ZF + ZB) / 2, Math.PI / 2); wall(ZF - ZB, H, XW, H / 2, (ZF + ZB) / 2, -Math.PI / 2);
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(2 * XW, ZF - ZB), wallMat); ceil.rotation.x = Math.PI / 2; ceil.position.set(0, H, (ZF + ZB) / 2); scene.add(ceil);
+const hemi = new THREE.HemisphereLight(0xdfe4f0, 0x2a2a30, 0.35); scene.add(hemi);
+
+// ---------- the wave: n°030 « Là où l'onde décide », recorded from amelielolie.com ----------
+const vid = document.createElement('video'); vid.src = 'media/onde-decide.mp4'; vid.loop = true; vid.muted = true; vid.playsInline = true;
+const vtex = new THREE.VideoTexture(vid); vtex.colorSpace = THREE.SRGBColorSpace;
+const wake = () => vid.play().catch(() => {});
+wake(); addEventListener('pointerdown', wake, { once: true });
+
+// ---------- the projector, ceiling-mounted in front of the veils ----------
+const VEIL = { w: 2.3, y0: 0.1, y1: 2.9 }, Z0 = 0.15, CY = 1.5;
+let N = +(QS.get('veils') || 6), GAP = 0.38;
+const projPos = new THREE.Vector3(0, 2.75, 3.1);
+const projCam = new THREE.PerspectiveCamera(21, 4 / 3, 0.1, 30);
+const projBody = new THREE.Group();
+{ const m = new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: .5 });
+  const b = new THREE.Mesh(new THREE.BoxGeometry(.42, .16, .36), m); projBody.add(b);
+  const lens = new THREE.Mesh(new THREE.CylinderGeometry(.045, .05, .05, 24), new THREE.MeshStandardMaterial({ color: 0x050505, roughness: .2 }));
+  lens.rotation.x = Math.PI / 2; lens.position.set(.1, 0, -.19); projBody.add(lens);
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(.015, .015, H - projPos.y - .08, 8), m); rod.position.y = (H - projPos.y) / 2 + .04; projBody.add(rod);
+  projBody.position.copy(projPos); scene.add(projBody); }
+function aimProjector() {
+  const zc = Z0 - (N - 1) / 2 * GAP;
+  projCam.position.copy(projPos); projCam.lookAt(0, CY, zc); projCam.updateMatrixWorld(); projCam.updateProjectionMatrix();
+  projBody.lookAt(0, CY, zc);
+  beam.position.copy(projPos); beam.target.position.set(0, CY, zc); beam.target.updateMatrixWorld();
+}
+// the light that goes through every veil lands, faint, on the back wall and the floor
+const beam = new THREE.SpotLight(0xffffff, 0, 0, THREE.MathUtils.degToRad(17), 0.05, 1.2);
+beam.map = vtex; scene.add(beam, beam.target);
+
+// ---------- the veils: sheer gauze, the image caught a little on each layer ----------
+const veilGeo = new THREE.PlaneGeometry(VEIL.w, VEIL.y1 - VEIL.y0, 1, 1);
+const U = { uVideo: { value: vtex }, uProj: { value: new THREE.Matrix4() }, uK: { value: 0 }, uT: { value: 0.72 }, uGain: { value: 1.25 },
+  uCollapse: { value: 0 }, uSpot: { value: new THREE.Vector2(.5, .5) }, uSeed: { value: 0 }, uRoom: { value: .35 } };
+const veilVS = `
+  varying vec3 vW; varying vec2 vUv;
+  void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`;
+const veilFS = `
+  uniform sampler2D uVideo; uniform mat4 uProj; uniform float uK, uT, uGain, uCollapse, uSeed, uRoom; uniform vec2 uSpot;
+  varying vec3 vW; varying vec2 vUv;
+  float h(float n){ return fract(sin(n)*43758.5453); }
+  float folds(float x){ float s = 1.; for (int i=0;i<7;i++){ float fi=float(i); s += .07*sin(x*(5.+fi*3.7+h(fi+uSeed)*9.)+h(fi*7.+uSeed)*6.28); } return clamp(s,.6,1.5); }
+  void main(){
+    vec4 p = uProj * vec4(vW,1.);
+    vec3 col = vec3(0.);
+    if (p.w > 0.) {
+      vec2 uv = p.xy / p.w * .5 + .5;
+      if (uv.x > 0. && uv.x < 1. && uv.y > 0. && uv.y < 1.) {
+        float r = .0025 * uK;                                   // each layer receives the image a little softer
+        vec3 c = texture2D(uVideo, uv).rgb * .4;
+        c += (texture2D(uVideo, uv + vec2(r,0.)).rgb + texture2D(uVideo, uv - vec2(r,0.)).rgb + texture2D(uVideo, uv + vec2(0.,r)).rgb + texture2D(uVideo, uv - vec2(0.,r)).rgb) * .15;
+        c = max(c - vec3(.014, .015, .03), 0.);                   // the projector's black, cut by a black frame on the image
+        vec2 d = (uv - uSpot) * vec2(4./3., 1.);
+        vec3 spot = vec3(.78,.82,1.) * (exp(-dot(d,d) / .0009) * 2.4 + exp(-dot(d,d) / .012) * .18);
+        c = mix(c, spot, uCollapse);
+        float edge = smoothstep(0., .02, uv.x) * smoothstep(1., .98, uv.x) * smoothstep(0., .02, uv.y) * smoothstep(1., .98, uv.y);
+        col = c * edge * pow(uT, uK) * uGain;
+      }
+    }
+    vec3 V = normalize(cameraPosition - vW);
+    float graz = pow(1. / max(abs(V.z), .3), .35);                 // gauze seen edge-on looks denser
+    float f = folds(vUv.x * 2.3);
+    float hem = (step(vUv.y, .012) + step(.992, vUv.y)) * .5;
+    vec3 base = vec3(.006, .006, .007) * (.4 + uRoom * 1.6) * (1. + hem * 3.);   // the gauze itself, barely there in the dark
+    gl_FragColor = vec4((col + base) * f * graz, 1.);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }`;
+const veils = new THREE.Group(); scene.add(veils);
+const battenMat = new THREE.MeshStandardMaterial({ color: 0x222226, roughness: .6 });
+const cableMat = new THREE.LineBasicMaterial({ color: 0x333338 });
+function buildVeils() {
+  veils.clear();
+  for (let k = 0; k < N; k++) {
+    const m = new THREE.ShaderMaterial({ uniforms: { uVideo: U.uVideo, uProj: U.uProj, uCollapse: U.uCollapse, uSpot: U.uSpot, uRoom: U.uRoom, uK: { value: 0 }, uT: { value: .72 }, uGain: { value: .17 }, uSeed: { value: 0 } },
+      vertexShader: veilVS, fragmentShader: veilFS, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    m.uniforms.uK.value = k; m.uniforms.uSeed.value = k * 3.1;
+    const z = Z0 - k * GAP;
+    const v = new THREE.Mesh(veilGeo, m); v.position.set(0, (VEIL.y0 + VEIL.y1) / 2, z); v.renderOrder = 10 - k; veils.add(v);
+    const bat = new THREE.Mesh(new THREE.BoxGeometry(VEIL.w + .04, .025, .025), battenMat); bat.position.set(0, VEIL.y1 + .012, z); veils.add(bat);
+    for (const sx of [-VEIL.w / 2 + .1, VEIL.w / 2 - .1]) {
+      const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(sx, VEIL.y1 + .02, z), new THREE.Vector3(sx, H, z)]);
+      veils.add(new THREE.Line(g, cableMat));
+    }
+  }
+  aimProjector();
+  U.uProj.value.multiplyMatrices(projCam.projectionMatrix, projCam.matrixWorldInverse);
+  beam.intensity = 9 * Math.pow(0.72, N);
+}
+
+// ---------- collapse: looking at the wave makes it fall into one point ----------
+let col = { t: -99, x: .5, y: .5 };
+function collapse() { col = { t: performance.now() / 1000, x: .32 + Math.random() * .36, y: .3 + Math.random() * .4 }; U.uSpot.value.set(col.x, col.y); }
+document.getElementById('collapse').onclick = collapse;
+function collapseLevel(t) {
+  const a = t - col.t; if (a < 0 || a > 6) return 0;
+  if (a < .45) return a / .45; if (a < 3) return 1; return 1 - (a - 3) / 3;
+}
+
+// ---------- panel ----------
+const countsEl = document.getElementById('counts');
+[1, 3, 6, 9].forEach(n => { const b = document.createElement('button'); b.textContent = n === 1 ? '1 voile' : n + ' voiles'; b.dataset.n = n;
+  b.onclick = () => { N = n; buildVeils(); markCounts(); }; countsEl.appendChild(b); });
+function markCounts() { countsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.n === N)); }
+document.getElementById('gap').oninput = (e) => { GAP = +e.target.value; document.getElementById('gapv').textContent = Math.round(GAP * 100) + ' cm'; buildVeils(); };
+const lightEl = document.getElementById('light');
+function applyLight() { const k = +lightEl.value; hemi.intensity = k; U.uRoom.value = k; }
+lightEl.oninput = applyLight;
+document.getElementById('bare').onclick = () => { document.body.classList.toggle('bare'); setTimeout(resize, 30); };
+
+// ---------- walking ----------
+const look = (x, z, tx, tz) => Math.atan2(x - tx, z - tz);
+const VIEWS = {
+  'vue de trois quarts': { x: 2.6, y: 1.55, z: 3.4, yaw: look(2.6, 3.4, -.1, -.8), pitch: 0.02 },
+  'de face, sous le projecteur': { x: 0, y: 1.6, z: 3.9, yaw: 0, pitch: 0.01 },
+  'de côté': { x: 3.0, y: 1.5, z: .6, yaw: look(3.0, .6, 0, -.9), pitch: 0.02 },
+  'tout près des voiles': { x: .55, y: 1.6, z: 1.0, yaw: look(.55, 1.0, 0, -.8), pitch: -.02 },
+  'vue du haut': { x: 2.6, y: 3.2, z: 3.0, yaw: look(2.6, 3.0, 0, -.8), pitch: -.42 },
+};
+const CAM = { ...VIEWS['vue de trois quarts'], keys: new Set() };
+const viewsEl = document.getElementById('views');
+Object.entries(VIEWS).forEach(([name, v]) => { const b = document.createElement('button'); b.textContent = name; b.onclick = () => Object.assign(CAM, v); viewsEl.appendChild(b); });
+function applyCam() { camera.position.set(CAM.x, CAM.y, CAM.z); camera.rotation.order = 'YXZ'; camera.rotation.set(CAM.pitch, CAM.yaw, 0); }
+let drag = null, moved = 0;
+const PTS = new Map(); let pinch = 0;
+const pdist = () => { const [a, b] = [...PTS.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+roomEl.addEventListener('pointerdown', (e) => { PTS.set(e.pointerId, { x: e.clientX, y: e.clientY }); roomEl.setPointerCapture(e.pointerId); moved = 0;
+  if (PTS.size === 2) { drag = null; pinch = pdist(); } else { drag = { x: e.clientX, y: e.clientY }; roomEl.classList.add('dragging'); } });
+roomEl.addEventListener('pointermove', (e) => { if (!PTS.has(e.pointerId)) return; PTS.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (PTS.size === 2) { const d = pdist(); step((d - pinch) * 0.01, 0); pinch = d; return; }
+  if (!drag) return; moved += Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y);
+  CAM.yaw -= (e.clientX - drag.x) * 0.0042; CAM.pitch = Math.max(-1.3, Math.min(1.2, CAM.pitch - (e.clientY - drag.y) * 0.0036)); drag = { x: e.clientX, y: e.clientY }; });
+const ray = new THREE.Raycaster();
+const lift = (e) => {
+  if (PTS.size === 1 && moved < 4) {                        // a click (not a drag) on the veils: the wave is looked at
+    const r = roomEl.getBoundingClientRect();
+    ray.setFromCamera({ x: (e.clientX - r.left) / r.width * 2 - 1, y: -(e.clientY - r.top) / r.height * 2 + 1 }, camera);
+    if (ray.intersectObjects(veils.children.filter(o => o.isMesh && o.material.isShaderMaterial)).length) collapse();
+  }
+  PTS.delete(e.pointerId);
+  if (PTS.size === 1) { const p = [...PTS.values()][0]; drag = { x: p.x, y: p.y }; } else { drag = null; roomEl.classList.remove('dragging'); } };
+roomEl.addEventListener('pointerup', lift); roomEl.addEventListener('pointercancel', lift);
+roomEl.addEventListener('wheel', (e) => { e.preventDefault(); step(-Math.sign(e.deltaY) * 0.3, 0); }, { passive: false });
+const WALK = { KeyW: 1, KeyZ: 1, ArrowUp: 1, KeyS: 1, ArrowDown: 1, KeyA: 1, KeyQ: 1, ArrowLeft: 1, KeyD: 1, ArrowRight: 1, KeyE: 1, KeyC: 1 };
+addEventListener('keydown', (e) => { if (WALK[e.code]) { CAM.keys.add(e.code); e.preventDefault(); } });
+addEventListener('keyup', (e) => CAM.keys.delete(e.code));
+function step(fwd, side) {
+  const fx = -Math.sin(CAM.yaw), fz = -Math.cos(CAM.yaw);
+  CAM.x += fx * fwd + Math.cos(CAM.yaw) * side; CAM.z += fz * fwd - Math.sin(CAM.yaw) * side;
+  CAM.x = Math.max(-XW + .3, Math.min(XW - .3, CAM.x)); CAM.z = Math.max(ZB + .3, Math.min(ZF - .3, CAM.z));
+}
+function walk(dt) {
+  const k = CAM.keys, v = 1.5 * dt; let f = 0, s = 0;
+  if (k.has('KeyW') || k.has('KeyZ') || k.has('ArrowUp')) f += v;
+  if (k.has('KeyS') || k.has('ArrowDown')) f -= v;
+  if (k.has('KeyA') || k.has('KeyQ') || k.has('ArrowLeft')) s -= v;
+  if (k.has('KeyD') || k.has('ArrowRight')) s += v;
+  if (f || s) step(f, s);
+  if (k.has('KeyE')) CAM.y = Math.min(H - .3, CAM.y + v);
+  if (k.has('KeyC')) CAM.y = Math.max(0.35, CAM.y - v);
+}
+
+// ---------- tour: a slow walk around the veils, for the preview film (?tour) ----------
+function tourCam(t) {
+  const T = 24, u = Math.min(1, t / T), e = u * u * (3 - 2 * u);
+  const a = THREE.MathUtils.lerp(0.5, 1.08, e), r = THREE.MathUtils.lerp(3.6, 3.0, e), cx = 0, cz = -.8;
+  CAM.x = cx + r * Math.sin(a) * .82; CAM.z = cz + r * Math.cos(a); CAM.y = 1.55 - .05 * e;
+  CAM.yaw = look(CAM.x, CAM.z, cx - .15 * e, cz); CAM.pitch = .02;
+}
+
+// ---------- loop ----------
+function resize() { const w = roomEl.clientWidth, h = roomEl.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+buildVeils(); markCounts(); applyLight();
+if (QS.get('view') && VIEWS[QS.get('view')]) Object.assign(CAM, VIEWS[QS.get('view')]);
+let last = performance.now(), t0 = null;
+window.__tourStart = () => { t0 = performance.now() / 1000; vid.currentTime = 0; wake(); };
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
+  if (TOUR && t0 !== null) { const tt = t - t0; tourCam(tt); if (tt > 13.5 && col.t < t0) { col = { t, x: .42, y: .52 }; U.uSpot.value.set(col.x, col.y); } }
+  else walk(dt);
+  applyCam();
+  U.uCollapse.value = collapseLevel(t);
+  beam.intensity = 9 * Math.pow(0.72, N) * (1 - .6 * U.uCollapse.value);
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+document.getElementById('loading').remove();
+</script>
+</body>
+</html>
